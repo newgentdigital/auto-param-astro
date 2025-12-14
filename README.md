@@ -97,7 +97,7 @@ What result the integration generates depends on your `paramMode`:
   - Result: `https://example.com/pricing?utm_source=newsletter&utm_medium=email&utm_campaign=sale&utm_term=winter&ref=true&v=2#faq`
 
 - `replace`
-  - Drops *all* existing query parameters, then adds only configured ones.
+  - Drops _all_ existing query parameters, then adds only configured ones.
   - Keeps the path and hash.
   - Result: `https://example.com/pricing?utm_source=newsletter&utm_medium=email&utm_term=winter&ref=true&v=2#faq`
 
