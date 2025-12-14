@@ -1,4 +1,4 @@
-name: Release Please
+name: Prepare release with release-please
 
 on:
   push:
@@ -26,6 +26,3 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           release-type: node
-          target-branch: main
-          package-name: "@newgentdigital/auto-param-astro"
-          include-v-in-tag: true
