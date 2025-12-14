@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.1](https://github.com/newgentdigital/auto-param-astro/compare/v1.1.0...v1.1.1) (2025-12-14)
+
+### Miscellaneous Chores
+
+- remove unused id from release-please workflow ([4dc4637](https://github.com/newgentdigital/auto-param-astro/commit/4dc46373e435da355746a60e7ae3276027bf96ff))
+
 ## [1.1.0](https://github.com/newgentdigital/auto-param-astro/compare/v1.0.2...v1.1.0) (2025-12-14)
 
 ### Features
