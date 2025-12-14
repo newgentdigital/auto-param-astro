@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/newgentdigital/auto-param-astro/compare/v1.0.0...v1.0.1) (2025-12-14)
+
+
+### Bug Fixes
+
+* refactor loop in rewriteHtmlExternalLinks to avoid constant-condition ([64b248c](https://github.com/newgentdigital/auto-param-astro/commit/64b248c2b30c45a502754c2665c2480be0264fff))
+
 ## 1.0.0 (2025-12-14)
 
 ### Features
