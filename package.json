@@ -14,7 +14,7 @@
     "withastro"
   ],
   "type": "module",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "homepage": "https://github.com/newgentdigital/auto-param-astro",
   "bugs": {
     "url": "https://github.com/newgentdigital/auto-param-astro",

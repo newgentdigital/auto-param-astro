@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.2](https://github.com/newgentdigital/auto-param-astro/compare/v1.0.1...v1.0.2) (2025-12-14)
+
+### Bug Fixes
+
+- correct package name and repository URL format in package.json ([becec2a](https://github.com/newgentdigital/auto-param-astro/commit/becec2afa6f477f30c2124fb6601fede4eff226c))
+
 ## [1.0.1](https://github.com/newgentdigital/auto-param-astro/compare/v1.0.0...v1.0.1) (2025-12-14)
 
 ### Bug Fixes
