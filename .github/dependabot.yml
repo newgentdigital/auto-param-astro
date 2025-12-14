@@ -7,7 +7,7 @@ updates:
       - "dependencies"
     schedule:
       interval: "weekly"
-    target-branch: "develop"
+    target-branch: "main"
 
   - package-ecosystem: github-actions
     directory: "/"
@@ -15,4 +15,4 @@ updates:
       - "dependencies"
     schedule:
       interval: "weekly"
-    target-branch: "develop"
+    target-branch: "main"
