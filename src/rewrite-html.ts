@@ -177,7 +177,6 @@ export function rewriteHtmlExternalLinks(
   let match: RegExpExecArray | null;
   // Iterate over all <a ...> tags without using a constant-condition loop.
   while ((match = anchorStart.exec(html)) !== null) {
-
     const tagStart = match.index;
     const tagEnd = findTagEnd(html, anchorStart.lastIndex);
     if (tagEnd === -1) break;
