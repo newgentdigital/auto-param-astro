@@ -6,7 +6,6 @@
       "name": "@newgentdigital/auto-param-astro",
       "devDependencies": {
         "@eslint/js": "^9.39.2",
-        "@types/node": "^24.10.4",
         "@typescript-eslint/parser": "^8.49.0",
         "eslint": "^9.39.2",
         "prettier": "^3.7.4",
@@ -15,7 +14,7 @@
         "typescript-eslint": "^8.49.0",
       },
       "peerDependencies": {
-        "astro": "^4.0.0 || ^5.0.0",
+        "astro": "^5.0.0",
       },
     },
   },
