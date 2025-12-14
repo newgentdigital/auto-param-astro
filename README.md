@@ -26,6 +26,7 @@ export default defineConfig({
         utm_source: "newsletter",
         utm_medium: "email",
       },
+      paramMode: "replace",
       exemptDataAttributes: ["data-auto-param-exempt"],
       exemptDomains: ["example.com", "*.github.com"],
     }),
@@ -59,6 +60,46 @@ export default defineConfig({
   - Default: `["data-auto-param-exempt"]`
 - `exemptDomains`: `string[]`
   - Default: `[]`
+
+## Explanation of `paramMode`
+
+Assume you have the following integration config:
+
+```js
+// astro.config.mjs
+autoParamAstro({
+  params: {
+    utm_source: "newsletter",
+    utm_medium: "email",
+    utm_term: "winter",
+    ref: true,
+    v: 2,
+  },
+});
+```
+
+... and this incoming link in your code:
+
+```text
+https://example.com/pricing?utm_source=twitter&utm_medium=social&utm_medium=ads&utm_campaign=sale#faq
+```
+
+What result the integration generates depends on your `paramMode`:
+
+- `preserve` (default)
+  - Keeps existing values for any configured parameters that already exist.
+  - Only adds configured parameters that are missing.
+  - Result: `https://example.com/pricing?utm_source=twitter&utm_medium=social&utm_medium=ads&utm_campaign=sale&utm_term=winter&ref=true&v=2#faq`
+
+- `override`
+  - Overwrites configured parameters (and collapses duplicates for those parameters to a single value).
+  - Leaves non-configured parameters (like `utm_campaign`) alone.
+  - Result: `https://example.com/pricing?utm_source=newsletter&utm_medium=email&utm_campaign=sale&utm_term=winter&ref=true&v=2#faq`
+
+- `replace`
+  - Drops *all* existing query parameters, then adds only configured ones.
+  - Keeps the path and hash.
+  - Result: `https://example.com/pricing?utm_source=newsletter&utm_medium=email&utm_term=winter&ref=true&v=2#faq`
 
 ## Exempt a single link
 
