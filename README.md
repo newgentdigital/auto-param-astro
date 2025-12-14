@@ -16,8 +16,8 @@ npm i @newgentdigital/auto-param-astro
 
 ```js
 // astro.config.mjs
-import { defineConfig } from "astro/config";
 import autoParamAstro from "@newgentdigital/auto-param-astro";
+import { defineConfig } from "astro/config";
 
 export default defineConfig({
   integrations: [

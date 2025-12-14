@@ -1,12 +1,11 @@
-import type { AstroIntegration } from "astro";
 import { readFile, writeFile } from "fs/promises";
-import { fileURLToPath } from "url";
 import { cpus } from "os";
-import { performance } from "perf_hooks";
 import path from "path";
-
-import type { AutoParamAstroOptions, RewriteStats } from "./types.js";
+import { performance } from "perf_hooks";
+import { fileURLToPath } from "url";
+import type { AstroIntegration } from "astro";
 import { rewriteHtmlExternalLinks } from "./rewrite-html.js";
+import type { AutoParamAstroOptions, RewriteStats } from "./types.js";
 import { walkFiles } from "./walk.js";
 
 function assertValidOptions(options: AutoParamAstroOptions): void {
