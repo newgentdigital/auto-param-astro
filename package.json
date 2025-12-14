@@ -5,12 +5,12 @@
   "description": "Automatically add your parameters to external links and URLs during build time with Astro.",
   "keywords": [
     "plugin",
-    "links",
+    "tooling",
+    "utils",
+    "seo",
     "astro",
-    "utm",
-    "query-params",
-    "astro-integration",
     "astro-component",
+    "astro-integration",
     "withastro"
   ],
   "type": "module",
