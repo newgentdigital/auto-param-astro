@@ -34,7 +34,7 @@ jobs:
           bun-version: latest
 
       - name: Setup Node
-        uses: actions/setup-node@v6.1.0
+        uses: actions/setup-node@v6.2.0
         with:
           node-version: 24
 
@@ -45,7 +45,7 @@ jobs:
         run: bun run build
 
       - name: Setup Node with npm registry
-        uses: actions/setup-node@v6.1.0
+        uses: actions/setup-node@v6.2.0
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
@@ -54,7 +54,7 @@ jobs:
         run: npm publish --provenance --access public
 
       - name: Setup Node with GitHub Packages registry
-        uses: actions/setup-node@v6.1.0
+        uses: actions/setup-node@v6.2.0
         with:
           node-version: 24
           registry-url: https://npm.pkg.github.com
