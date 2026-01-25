@@ -9,15 +9,15 @@
       },
       "devDependencies": {
         "@eslint/js": "^9.39.2",
-        "@typescript-eslint/parser": "^8.49.0",
+        "@typescript-eslint/parser": "^8.53.0",
         "eslint": "^9.39.2",
         "prettier": "^3.7.4",
         "prettier-plugin-jsdoc": "^1.8.0",
-        "typescript": "^5.8.2",
-        "typescript-eslint": "^8.49.0",
+        "typescript": "^5.9.3",
+        "typescript-eslint": "^8.53.0",
       },
       "peerDependencies": {
-        "astro": "^5.0.0",
+        "astro": "^5.16.5",
       },
     },
   },
@@ -732,7 +732,7 @@
 
     "prelude-ls": ["prelude-ls@1.2.1", "", {}, "sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g=="],
 
-    "prettier": ["prettier@3.7.4", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-v6UNi1+3hSlVvv8fSaoUbggEM5VErKmmpGA7Pl3HF8V6uKY7rvClBOJlH6yNwQtfTueNkGVpOv/mtWL9L4bgRA=="],
+    "prettier": ["prettier@3.8.1", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-UOnG6LftzbdaHZcKoPFtOcCKztrQ57WkHDeRD9t/PTQtmT0NHSeWWepj6pS0z/N7+08BHFDQVUrfmfMRcZwbMg=="],
 
     "prettier-plugin-jsdoc": ["prettier-plugin-jsdoc@1.8.0", "", { "dependencies": { "binary-searching": "^2.0.5", "comment-parser": "^1.4.0", "mdast-util-from-markdown": "^2.0.0" }, "peerDependencies": { "prettier": "^3.0.0" } }, "sha512-byW8EBZ1DSA3CPdDGBXfcdqqhh2eq0+HlIOPTGZ6rf9O2p/AwBmtS0e49ot5ZeOdcszj81FyzbyHr/VS0eYpCg=="],
 
