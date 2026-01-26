@@ -2,10 +2,9 @@
 
 ## [1.3.0](https://github.com/newgentdigital/auto-param-astro/compare/v1.2.0...v1.3.0) (2026-01-26)
 
-
 ### Features
 
-* implement dynamic middleware for HTML response rewriting ([63d53c4](https://github.com/newgentdigital/auto-param-astro/commit/63d53c4999587df30d795d8ff320d752821fc9d1))
+- implement dynamic middleware for HTML response rewriting ([63d53c4](https://github.com/newgentdigital/auto-param-astro/commit/63d53c4999587df30d795d8ff320d752821fc9d1))
 
 ## [1.2.0](https://github.com/newgentdigital/auto-param-astro/compare/v1.1.1...v1.2.0) (2026-01-26)
 
