@@ -1,14 +1,18 @@
-import { opendir } from "fs/promises";
+import { readdir } from "fs/promises";
 import path from "path";
 
 export async function* walkFiles(rootDir: string): AsyncGenerator<string> {
-  const dir = await opendir(rootDir);
-  for await (const entry of dir) {
-    const fullPath = path.join(rootDir, entry.name);
-    if (entry.isDirectory()) {
-      yield* walkFiles(fullPath);
-      continue;
+  const files = await readdir(rootDir, {
+    recursive: true,
+    withFileTypes: true,
+  });
+
+  for (const file of files) {
+    if (file.isFile() && file.name.toLowerCase().endsWith(".html")) {
+      const filePath = file.parentPath
+        ? path.join(file.parentPath, file.name)
+        : path.join(rootDir, file.name);
+      yield filePath;
     }
-    if (entry.isFile()) yield fullPath;
   }
 }

@@ -56,59 +56,30 @@ export default function autoParamAstro(
 ): AstroIntegration {
   assertValidOptions(options);
 
+  // Create middleware factory dynamically with options embedded
+  const middlewareFactory = `
+import { createMiddleware } from "@newgentdigital/auto-param-astro/middleware";
+export const onRequest = createMiddleware(${JSON.stringify(options)});
+`;
+
   return {
     name: "@newgentdigital/auto-param-astro",
     hooks: {
-      "astro:server:setup": async ({ server, logger }) => {
-        const devLogger = logger.fork("@newgentdigital/auto-param-astro/dev");
+      "astro:config:setup": async ({ addMiddleware, config }) => {
+        // Write dynamic middleware with embedded options
+        const middlewarePath = path.join(
+          fileURLToPath(config.root),
+          "node_modules",
+          ".astro",
+          "auto-param-middleware.mjs",
+        );
 
-        server.middlewares.use((req, res, next) => {
-          // Only intercept HTML responses
-          const originalWrite = res.write.bind(res);
-          const originalEnd = res.end.bind(res);
-          const chunks: Buffer[] = [];
+        await writeFile(middlewarePath, middlewareFactory, "utf8");
 
-          res.write = function (chunk: any, ...args: any[]): boolean {
-            if (Buffer.isBuffer(chunk) || typeof chunk === "string") {
-              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-              return true;
-            }
-            return originalWrite(chunk, ...args);
-          };
-
-          res.end = function (chunk?: any, ...args: any[]): any {
-            if (chunk) {
-              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-            }
-
-            const contentType = res.getHeader("content-type");
-            if (
-              contentType &&
-              typeof contentType === "string" &&
-              contentType.includes("text/html") &&
-              chunks.length > 0
-            ) {
-              const input = Buffer.concat(chunks).toString("utf8");
-              const { html: output, linksChanged } = rewriteHtmlExternalLinks(
-                input,
-                options,
-              );
-
-              if (linksChanged > 0) {
-                devLogger.info(
-                  `Rewrote ${linksChanged} external link${linksChanged !== 1 ? "s" : ""} in ${req.url}`,
-                );
-              }
-
-              return originalEnd(output, ...args);
-            }
-
-            // Not HTML or no chunks, write original chunks
-            chunks.forEach((chunk) => originalWrite(chunk));
-            return originalEnd(...args);
-          };
-
-          next();
+        // Add middleware for dev & preview mode
+        addMiddleware({
+          entrypoint: middlewarePath,
+          order: "post",
         });
       },
       "astro:build:done": async ({ dir, logger }) => {
@@ -125,8 +96,7 @@ export default function autoParamAstro(
         const htmlFiles: string[] = [];
         for await (const filePath of walkFiles(outDir)) {
           stats.filesScanned++;
-          if (filePath.toLowerCase().endsWith(".html"))
-            htmlFiles.push(filePath);
+          htmlFiles.push(filePath);
         }
 
         const concurrency = Math.max(2, Math.min(8, cpus().length || 2));
