@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.0](https://github.com/newgentdigital/auto-param-astro/compare/v1.1.1...v1.2.0) (2026-01-26)
+
+### Features
+
+- add dev mode support ([ce70499](https://github.com/newgentdigital/auto-param-astro/commit/ce70499f19ae2444868738b2a1d6d4e0673f80ac))
+
 ## [1.1.1](https://github.com/newgentdigital/auto-param-astro/compare/v1.1.0...v1.1.1) (2025-12-14)
 
 ### Miscellaneous Chores
