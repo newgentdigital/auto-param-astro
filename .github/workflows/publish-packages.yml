@@ -1,15 +1,21 @@
 name: Publish to npm and GitHub Packages
 
+# Called only by release-please after it cuts a release. There is deliberately
+# no manual or tag trigger: every publish must correspond to a release.
+#
+# This stays a separate file because npm Trusted Publishing authorises by
+# workflow filename, and the OIDC job_workflow_ref claim for a reusable
+# workflow is this file rather than the caller.
 on:
-  release:
-    types: [published]
-  push:
-    tags:
-      - "v*.*.*"
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      tag:
+        description: The release tag to publish, e.g. v2.0.0.
+        required: true
+        type: string
 
 concurrency:
-  group: publish-${{ github.ref }}
+  group: publish-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
@@ -26,7 +32,7 @@ jobs:
         uses: actions/checkout@v7.0.1
         with:
           # Publish the tagged commit, not whatever main happens to point at.
-          ref: ${{ github.event.release.tag_name || github.ref }}
+          ref: ${{ inputs.tag }}
           persist-credentials: false
 
       - name: Setup Bun
