@@ -44,8 +44,26 @@ export interface AutoParamAstroOptions {
   exemptDomains?: string[];
 }
 
+/**
+ * Options after defaults have been applied and per-run work (regex compilation,
+ * param stringification) has been hoisted out of the hot path.
+ *
+ * @internal
+ */
+export interface ResolvedAutoParamAstroOptions {
+  /** Configured parameters, pre-stringified. */
+  params: readonly (readonly [key: string, value: string])[];
+  paramMode: AutoParamParamMode;
+  /** One compiled matcher per configured exempt data-attribute. */
+  exemptAttributePatterns: readonly RegExp[];
+  /**
+   * Normalized exempt hostnames, with any leading `*.` stripped. Each entry
+   * matches itself and any subdomain of itself.
+   */
+  exemptDomains: readonly string[];
+}
+
 export interface RewriteStats {
-  filesScanned: number;
   filesChanged: number;
   linksScanned: number;
   linksChanged: number;
