@@ -2,9 +2,9 @@
 
 # @newgentdigital/auto-param-astro
 
-[![npm version](https://img.shields.io/npm/v/%40newgentdigital%2Fauto-param-astro?label=npm+version&labelColor=252525&color=CB3837)](https://www.npmjs.com/package/@newgentdigital/auto-param-astro)
+[![version](https://img.shields.io/npm/v/%40newgentdigital%2Fauto-param-astro?logo=npm&logoColor=white&label=version&labelColor=4E4E4E&color=CB3837)](https://www.npmjs.com/package/@newgentdigital/auto-param-astro)
 [![code coverage](https://app.deepsource.com/gh/newgentdigital/auto-param-astro.svg/?label=code+coverage&show_trend=false&token=4kvow-XuVJo_8BjXMirne_mv)](https://app.deepsource.com/gh/newgentdigital/auto-param-astro/)
-[![coderabbit reviews](https://img.shields.io/coderabbit/prs/github/newgentdigital/auto-param-astro?utm_source=oss&utm_medium=github&utm_campaign=newgentdigital%2Fauto-param-astro&labelColor=252525&color=FF570A&label=coderabbit+reviews)](https://coderabbit.ai)
+[![reviews](https://img.shields.io/coderabbit/prs/github/newgentdigital/auto-param-astro?utm_source=oss&utm_medium=github&utm_campaign=newgentdigital%2Fauto-param-astro&logo=coderabbit&logoColor=white&label=reviews&labelColor=4E4E4E&color=FF570A)](https://coderabbit.ai)
 
 Astro integration that adds query parameters to the links in your site's HTML — UTM tags, referral codes, affiliate IDs — without touching a single template.
 
