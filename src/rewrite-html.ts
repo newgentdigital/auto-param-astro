@@ -1,16 +1,35 @@
-import { URL } from "url";
-import type { AutoParamAstroOptions, AutoParamValue } from "./types.js";
+import { normalizeHost, resolveOptions } from "./options.js";
+import type { AutoParamAstroOptions, ResolvedAutoParamAstroOptions } from "./types.js";
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+/**
+ * Matches the start of an anchor tag only when followed by a tag terminator, so
+ * custom elements such as `<a-scene>` or `<audio>` are not treated as links.
+ */
+const ANCHOR_START = /<a(?=[\s/>])/gi;
+
+/**
+ * Regions whose contents are raw text (or a comment) and therefore must never
+ * be rewritten, even though they can contain markup-looking substrings.
+ */
+const SKIPPED_REGIONS: readonly { start: RegExp; end: string }[] = [
+  { start: /<!--/g, end: "-->" },
+  { start: /<script(?=[\s/>])/gi, end: "</script" },
+  { start: /<style(?=[\s/>])/gi, end: "</style" },
+  { start: /<textarea(?=[\s/>])/gi, end: "</textarea" },
+];
+
+const QUOTED_HREF = /\bhref\s*=\s*(?<quote>["'])(?<value>[^"']*)\k<quote>/i;
+const UNQUOTED_HREF = /\bhref\s*=\s*(?<value>[^\s"'<>`]+)/i;
+
+const NON_HTTP_SCHEME = /^(?:[a-z][a-z0-9+.-]*:)/i;
 
 function decodeHrefAttributeValue(raw: string): string {
   // The most common case in generated HTML is &amp; in query strings.
   return raw
     .replaceAll("&amp;", "&")
     .replaceAll("&#38;", "&")
-    .replaceAll("&#x26;", "&");
+    .replaceAll("&#x26;", "&")
+    .replaceAll("&#X26;", "&");
 }
 
 function shouldEncodeAmpersands(rawOriginal: string): boolean {
@@ -21,60 +40,35 @@ function shouldEncodeAmpersands(rawOriginal: string): boolean {
   );
 }
 
-function encodeAmpersandsIfNeeded(value: string, encode: boolean): string {
-  return encode ? value.replaceAll("&", "&amp;") : value;
-}
-
-function normalizeHost(hostname: string): string {
-  return hostname.trim().toLowerCase().replace(/\.+$/, "");
-}
-
 function isDomainExempt(
   hostname: string,
-  exemptDomains: readonly string[],
+  exemptDomains: ResolvedAutoParamAstroOptions["exemptDomains"],
 ): boolean {
+  if (exemptDomains.length === 0) return false;
+
   const host = normalizeHost(hostname);
   if (!host) return false;
 
-  for (const rawEntry of exemptDomains) {
-    const entry = normalizeHost(rawEntry);
-    if (!entry) continue;
-
-    if (entry.startsWith("*.")) {
-      const base = entry.slice(2);
-      if (host === base || host.endsWith(`.${base}`)) return true;
-      continue;
-    }
-
-    if (host === entry || host.endsWith(`.${entry}`)) return true;
-  }
-
-  return false;
+  return exemptDomains.some((base) => host === base || host.endsWith(`.${base}`));
 }
 
-function getDefaultedOptions(
-  options: AutoParamAstroOptions,
-): Required<AutoParamAstroOptions> {
-  return {
-    params: options.params,
-    paramMode: options.paramMode ?? "preserve",
-    exemptDataAttributes: options.exemptDataAttributes ?? [
-      "data-auto-param-exempt",
-    ],
-    exemptDomains: options.exemptDomains ?? [],
-  };
-}
-
+/**
+ * Finds the index of the `>` that closes a tag starting at `startIndex`,
+ * skipping over quoted attribute values. Returns -1 if the tag is
+ * unterminated.
+ */
 function findTagEnd(html: string, startIndex: number): number {
-  let quote: '"' | "'" | "`" | null = null;
+  let quote: '"' | "'" | null = null;
+
   for (let i = startIndex; i < html.length; i++) {
     const char = html[i];
+
     if (quote) {
       if (char === quote) quote = null;
       continue;
     }
 
-    if (char === '"' || char === "'" || char === "`") {
+    if (char === '"' || char === "'") {
       quote = char;
       continue;
     }
@@ -85,39 +79,27 @@ function findTagEnd(html: string, startIndex: number): number {
   return -1;
 }
 
-function hasExemptAttribute(
-  tag: string,
-  exemptDataAttributes: readonly string[],
-): boolean {
-  for (const attrName of exemptDataAttributes) {
-    if (!attrName) continue;
-
-    // Ensure we match attribute names, not arbitrary substrings.
-    const re = new RegExp(`\\s${escapeRegExp(attrName)}(?=\\s|=|>|\\/)`, "i");
-    if (re.test(tag)) return true;
-  }
-  return false;
+function hasExemptAttribute(tag: string, patterns: readonly RegExp[]): boolean {
+  return patterns.some((pattern) => pattern.test(tag));
 }
 
-function stringifyParamValue(value: AutoParamValue): string {
-  return String(value);
-}
-
-function rewriteHref(
-  rawHref: string,
-  options: Required<AutoParamAstroOptions>,
-): string | null {
+/**
+ * Returns the rewritten href, or `null` when the link should be left alone
+ * (relative URL, non-HTTP scheme, exempt domain, or unparseable).
+ */
+function rewriteHref(rawHref: string, options: ResolvedAutoParamAstroOptions): string | null {
   const decoded = decodeHrefAttributeValue(rawHref.trim());
   if (!decoded) return null;
 
-  if (
-    decoded.startsWith("mailto:") ||
-    decoded.startsWith("tel:") ||
-    decoded.startsWith("#")
-  )
-    return null;
+  const isProtocolRelative = decoded.startsWith("//") && !decoded.startsWith("///");
 
-  const isProtocolRelative = decoded.startsWith("//");
+  // Bail out early on relative URLs, fragments, and non-HTTP schemes
+  // (mailto:, tel:, javascript:, data:, ...) without paying for URL parsing.
+  if (!isProtocolRelative) {
+    const scheme = NON_HTTP_SCHEME.exec(decoded)?.[0]?.toLowerCase();
+    if (scheme !== "http:" && scheme !== "https:") return null;
+  }
+
   let url: URL;
   try {
     url = new URL(isProtocolRelative ? `https:${decoded}` : decoded);
@@ -125,34 +107,47 @@ function rewriteHref(
     return null;
   }
 
-  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
   if (isDomainExempt(url.hostname, options.exemptDomains)) return null;
 
-  if (options.paramMode === "replace") {
-    url.search = "";
-  }
+  if (options.paramMode === "replace") url.search = "";
 
-  for (const [key, value] of Object.entries(options.params)) {
-    if (!key) continue;
-
-    if (options.paramMode === "preserve" && url.searchParams.has(key)) {
-      continue;
-    }
-
+  for (const [key, value] of options.params) {
     if (options.paramMode === "preserve") {
-      url.searchParams.append(key, stringifyParamValue(value));
+      if (!url.searchParams.has(key)) url.searchParams.append(key, value);
       continue;
     }
 
-    // "override" (and also "replace" after clearing) overwrites any existing value(s).
-    url.searchParams.set(key, stringifyParamValue(value));
+    // "override" (and "replace", post-clearing) overwrites existing value(s).
+    url.searchParams.set(key, value);
   }
 
-  if (isProtocolRelative) {
-    return `//${url.host}${url.pathname}${url.search}${url.hash}`;
-  }
+  if (isProtocolRelative) return `//${url.host}${url.pathname}${url.search}${url.hash}`;
 
   return url.toString();
+}
+
+/**
+ * Builds a sorted list of `[start, end)` ranges that must not be rewritten
+ * (comments, `<script>`, `<style>`, and `<textarea>` contents).
+ */
+function findSkippedRegions(html: string): readonly [number, number][] {
+  const regions: [number, number][] = [];
+  const lowerHtml = html.toLowerCase();
+
+  for (const { start, end } of SKIPPED_REGIONS) {
+    start.lastIndex = 0;
+
+    let match: RegExpExecArray | null;
+    while ((match = start.exec(html)) !== null) {
+      const closeIndex = lowerHtml.indexOf(end, start.lastIndex);
+      // An unterminated region swallows the rest of the document.
+      const regionEnd = closeIndex === -1 ? html.length : closeIndex;
+      regions.push([match.index, regionEnd]);
+      start.lastIndex = regionEnd;
+    }
+  }
+
+  return regions.toSorted((a, b) => a[0] - b[0]);
 }
 
 export interface HtmlRewriteResult {
@@ -161,73 +156,81 @@ export interface HtmlRewriteResult {
   linksChanged: number;
 }
 
+/**
+ * Rewrites external `<a href>` targets in an HTML document, adding the
+ * configured query parameters according to `paramMode`.
+ *
+ * Callers that process many documents should resolve their options once with
+ * `resolveOptions()` and call `rewriteHtml()` instead.
+ */
 export function rewriteHtmlExternalLinks(
   html: string,
-  userOptions: AutoParamAstroOptions,
+  options: AutoParamAstroOptions,
 ): HtmlRewriteResult {
-  const options = getDefaultedOptions(userOptions);
+  return rewriteHtml(html, resolveOptions(options));
+}
 
+/** As `rewriteHtmlExternalLinks`, but skips per-call option resolution. */
+export function rewriteHtml(
+  html: string,
+  options: ResolvedAutoParamAstroOptions,
+): HtmlRewriteResult {
   let linksScanned = 0;
   let linksChanged = 0;
 
-  const anchorStart = /<a\b/gi;
-  let lastIndex = 0;
+  const skipped = findSkippedRegions(html);
+  let skippedIndex = 0;
+
   const parts: string[] = [];
+  let lastIndex = 0;
+
+  ANCHOR_START.lastIndex = 0;
 
   let match: RegExpExecArray | null;
-  // Iterate over all <a ...> tags without using a constant-condition loop.
-  while ((match = anchorStart.exec(html)) !== null) {
+  while ((match = ANCHOR_START.exec(html)) !== null) {
     const tagStart = match.index;
-    const tagEnd = findTagEnd(html, anchorStart.lastIndex);
+
+    // Skip anchors that live inside a raw-text or comment region.
+    let region = skipped[skippedIndex];
+    while (region && region[1] <= tagStart) {
+      skippedIndex++;
+      region = skipped[skippedIndex];
+    }
+
+    if (region && region[0] <= tagStart) {
+      ANCHOR_START.lastIndex = region[1];
+      continue;
+    }
+
+    const tagEnd = findTagEnd(html, ANCHOR_START.lastIndex);
     if (tagEnd === -1) break;
 
     const tag = html.slice(tagStart, tagEnd + 1);
     let rewrittenTag = tag;
 
-    if (!hasExemptAttribute(tag, options.exemptDataAttributes)) {
-      // Prefer quoted href first.
-      const quotedHrefRe =
-        /\bhref\s*=\s*(?<quote>["'])(?<value>.*?)\k<quote>/is;
-      const unquotedHrefRe = /\bhref\s*=\s*(?<value>[^\s"'<>`]+)/is;
-
-      let rawHref: string | undefined;
-      let quote: string | undefined;
-      let usedQuoted = false;
-
-      const quotedMatch = quotedHrefRe.exec(tag);
-      if (quotedMatch?.groups) {
-        rawHref = quotedMatch.groups.value;
-        quote = quotedMatch.groups.quote;
-        usedQuoted = true;
-      } else {
-        const unquotedMatch = unquotedHrefRe.exec(tag);
-        if (unquotedMatch?.groups) {
-          rawHref = unquotedMatch.groups.value;
-          usedQuoted = false;
-        }
-      }
+    if (!hasExemptAttribute(tag, options.exemptAttributePatterns)) {
+      // Prefer a quoted href; fall back to an unquoted attribute value.
+      const quotedMatch = QUOTED_HREF.exec(tag);
+      const unquotedMatch = quotedMatch ? null : UNQUOTED_HREF.exec(tag);
+      const rawHref = quotedMatch?.groups?.value ?? unquotedMatch?.groups?.value;
 
       if (rawHref) {
         linksScanned++;
-        const encodeAmpersands = shouldEncodeAmpersands(rawHref);
+
         const rewrittenHref = rewriteHref(rawHref, options);
-        if (rewrittenHref) {
-          const finalHref = encodeAmpersandsIfNeeded(
-            rewrittenHref,
-            encodeAmpersands,
-          );
-          const same = finalHref === rawHref;
-          if (!same) {
+        if (rewrittenHref !== null) {
+          const finalHref = shouldEncodeAmpersands(rawHref)
+            ? rewrittenHref.replaceAll("&", "&amp;")
+            : rewrittenHref;
+
+          if (finalHref !== rawHref) {
             linksChanged++;
-            if (usedQuoted && quote) {
-              rewrittenTag = tag.replace(
-                quotedHrefRe,
-                () => `href=${quote}${finalHref}${quote}`,
-              );
-            } else {
-              // If the original attribute was unquoted, rewrite it with quotes for safety.
-              rewrittenTag = tag.replace(unquotedHrefRe, `href="${finalHref}"`);
-            }
+
+            const quote = quotedMatch?.groups?.quote;
+            rewrittenTag = quotedMatch
+              ? tag.replace(QUOTED_HREF, () => `href=${quote}${finalHref}${quote}`)
+              : // Unquoted attributes are re-emitted quoted, for safety.
+                tag.replace(UNQUOTED_HREF, () => `href="${finalHref}"`);
           }
         }
       }
@@ -235,14 +238,10 @@ export function rewriteHtmlExternalLinks(
 
     parts.push(html.slice(lastIndex, tagStart), rewrittenTag);
     lastIndex = tagEnd + 1;
-    anchorStart.lastIndex = lastIndex;
+    ANCHOR_START.lastIndex = lastIndex;
   }
 
   parts.push(html.slice(lastIndex));
 
-  return {
-    html: parts.join(""),
-    linksScanned,
-    linksChanged,
-  };
+  return { html: parts.join(""), linksScanned, linksChanged };
 }
