@@ -1,18 +1,21 @@
-import { readdir } from "fs/promises";
-import path from "path";
+import { readdir } from "node:fs/promises";
+import path from "node:path";
 
-export async function* walkFiles(rootDir: string): AsyncGenerator<string> {
-  const files = await readdir(rootDir, {
+/** Recursively collects the absolute paths of every `*.html` file in `rootDir`. */
+export async function findHtmlFiles(rootDir: string): Promise<string[]> {
+  const entries = await readdir(rootDir, {
     recursive: true,
     withFileTypes: true,
   });
 
-  for (const file of files) {
-    if (file.isFile() && file.name.toLowerCase().endsWith(".html")) {
-      const filePath = file.parentPath
-        ? path.join(file.parentPath, file.name)
-        : path.join(rootDir, file.name);
-      yield filePath;
-    }
+  const files: string[] = [];
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    if (!entry.name.toLowerCase().endsWith(".html")) continue;
+
+    // `parentPath` is available from Node 20.12, which this package requires.
+    files.push(path.join(entry.parentPath, entry.name));
   }
+
+  return files;
 }

@@ -1,128 +1,137 @@
-import { readFile, writeFile } from "fs/promises";
-import { cpus } from "os";
-import path from "path";
-import { performance } from "perf_hooks";
-import { fileURLToPath } from "url";
+import { readFile, writeFile } from "node:fs/promises";
+import { availableParallelism } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { AstroIntegration } from "astro";
-import { rewriteHtmlExternalLinks } from "./rewrite-html.js";
+import { escapeRegExp, resolveOptions } from "./options.js";
+import { rewriteHtml } from "./rewrite-html.js";
 import type { AutoParamAstroOptions, RewriteStats } from "./types.js";
-import { walkFiles } from "./walk.js";
+import { findHtmlFiles } from "./walk.js";
 
-function assertValidOptions(options: AutoParamAstroOptions): void {
-  if (!options || typeof options !== "object") {
-    throw new Error("[auto-param-astro] Options are required.");
-  }
+const NAME = "@newgentdigital/auto-param-astro";
 
-  if (!options.params || typeof options.params !== "object") {
-    throw new Error("[auto-param-astro] options.params must be an object.");
-  }
+const VIRTUAL_MODULE_ID = "virtual:auto-param-astro/middleware";
+const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
 
-  if (Object.keys(options.params).length === 0) {
-    throw new Error(
-      "[auto-param-astro] options.params must contain at least one parameter.",
-    );
-  }
+/**
+ * Absolute path to this package's middleware entrypoint, as a specifier Vite
+ * can import. Only Windows separators are rewritten — on POSIX a backslash is a
+ * legal filename character, so replacing it would corrupt the path.
+ */
+const MIDDLEWARE_ENTRYPOINT = (() => {
+  const filePath = fileURLToPath(new URL("./middleware.js", import.meta.url));
+  return path.sep === path.win32.sep
+    ? filePath.replaceAll(path.win32.sep, path.posix.sep)
+    : filePath;
+})();
 
-  if (
-    options.paramMode &&
-    options.paramMode !== "preserve" &&
-    options.paramMode !== "override" &&
-    options.paramMode !== "replace"
-  ) {
-    throw new Error(
-      "[auto-param-astro] options.paramMode must be one of: preserve | override | replace.",
-    );
-  }
+function exactMatch(id: string): RegExp {
+  return new RegExp(`^${escapeRegExp(id)}$`);
 }
 
+/**
+ * Serves a generated middleware module with the user's options baked in.
+ *
+ * Astro resolves integration middleware entrypoints through Vite, so a virtual
+ * module lets us pass build-time configuration through without writing a
+ * generated file to disk.
+ *
+ * The hooks use Vite 8's object form with an `id` filter. Astro 7 runs on
+ * Rolldown, where an unfiltered hook is invoked across the JS/Rust boundary for
+ * every single module; the filter keeps that to the one module we own.
+ */
+function createMiddlewarePlugin(options: AutoParamAstroOptions) {
+  return {
+    name: VIRTUAL_MODULE_ID,
+    resolveId: {
+      filter: { id: exactMatch(VIRTUAL_MODULE_ID) },
+      handler: (id: string) => (id === VIRTUAL_MODULE_ID ? RESOLVED_VIRTUAL_MODULE_ID : undefined),
+    },
+    load: {
+      filter: { id: exactMatch(RESOLVED_VIRTUAL_MODULE_ID) },
+      handler: (id: string) =>
+        id === RESOLVED_VIRTUAL_MODULE_ID
+          ? [
+              `import { createMiddleware } from ${JSON.stringify(MIDDLEWARE_ENTRYPOINT)};`,
+              `export const onRequest = createMiddleware(${JSON.stringify(options)});`,
+            ].join("\n")
+          : undefined,
+    },
+  };
+}
+
+/** Runs `worker` over `items` with at most `concurrency` in flight. */
 async function runPool<T>(
   items: readonly T[],
   concurrency: number,
   worker: (item: T) => Promise<void>,
 ): Promise<void> {
-  const queue = items.slice();
-  const runners = Array.from({ length: concurrency }, async () => {
-    while (queue.length > 0) {
-      const item = queue.shift();
-      if (item === undefined) return;
-      await worker(item);
+  let cursor = 0;
+
+  const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (cursor < items.length) {
+      const item = items[cursor++];
+      // Sequential by design: each runner is one of `concurrency` workers
+      // draining a shared cursor.
+      // oxlint-disable-next-line eslint/no-await-in-loop
+      if (item !== undefined) await worker(item);
     }
   });
+
   await Promise.all(runners);
 }
 
-export default function autoParamAstro(
-  options: AutoParamAstroOptions,
-): AstroIntegration {
-  assertValidOptions(options);
-
-  // Create middleware factory dynamically with options embedded
-  const middlewareFactory = `
-import { createMiddleware } from "@newgentdigital/auto-param-astro/middleware";
-export const onRequest = createMiddleware(${JSON.stringify(options)});
-`;
+export default function autoParamAstro(options: AutoParamAstroOptions): AstroIntegration {
+  // Fail fast at config time rather than mid-build, and reuse the resolved
+  // form for the build pass.
+  const resolved = resolveOptions(options);
 
   return {
-    name: "@newgentdigital/auto-param-astro",
+    name: NAME,
     hooks: {
-      "astro:config:setup": async ({ addMiddleware, config }) => {
-        // Write dynamic middleware with embedded options
-        const middlewarePath = path.join(
-          fileURLToPath(config.root),
-          "node_modules",
-          ".astro",
-          "auto-param-middleware.mjs",
-        );
-
-        await writeFile(middlewarePath, middlewareFactory, "utf8");
-
-        // Add middleware for dev & preview mode
-        addMiddleware({
-          entrypoint: middlewarePath,
-          order: "post",
+      "astro:config:setup": ({ addMiddleware, updateConfig }) => {
+        updateConfig({
+          vite: { plugins: [createMiddlewarePlugin(options)] },
         });
+
+        // Handles pages rendered on demand, plus prerendered pages at build time.
+        addMiddleware({ entrypoint: VIRTUAL_MODULE_ID, order: "post" });
       },
       "astro:build:done": async ({ dir, logger }) => {
         const startedAt = performance.now();
         const outDir = fileURLToPath(dir);
 
+        // Covers static assets the middleware never sees, such as raw HTML
+        // files copied from `public/`.
+        const htmlFiles = await findHtmlFiles(outDir);
+        if (htmlFiles.length === 0) {
+          logger.debug(`No HTML files found in ${outDir}; nothing to rewrite.`);
+          return;
+        }
+
         const stats: RewriteStats = {
-          filesScanned: 0,
           filesChanged: 0,
           linksScanned: 0,
           linksChanged: 0,
         };
 
-        const htmlFiles: string[] = [];
-        for await (const filePath of walkFiles(outDir)) {
-          stats.filesScanned++;
-          htmlFiles.push(filePath);
-        }
-
-        const concurrency = Math.max(2, Math.min(8, cpus().length || 2));
-        const buildLogger = logger.fork(
-          "@newgentdigital/auto-param-astro/build",
-        );
+        const concurrency = Math.max(2, Math.min(8, availableParallelism()));
 
         await runPool(htmlFiles, concurrency, async (filePath) => {
           const input = await readFile(filePath, "utf8");
-          const {
-            html: output,
-            linksScanned,
-            linksChanged,
-          } = rewriteHtmlExternalLinks(input, options);
+          const { html: output, linksScanned, linksChanged } = rewriteHtml(input, resolved);
 
           stats.linksScanned += linksScanned;
           stats.linksChanged += linksChanged;
 
-          if (output !== input) {
-            stats.filesChanged++;
-            await writeFile(filePath, output, "utf8");
-          }
+          if (output === input) return;
+
+          stats.filesChanged++;
+          await writeFile(filePath, output, "utf8");
         });
 
         const elapsedMs = Math.round(performance.now() - startedAt);
-        buildLogger.info(
+        logger.info(
           `Updated ${stats.linksChanged}/${stats.linksScanned} external links across ${stats.filesChanged}/${htmlFiles.length} HTML files in ${elapsedMs}ms (outDir: ${path.basename(outDir)}).`,
         );
       },
@@ -130,4 +139,4 @@ export const onRequest = createMiddleware(${JSON.stringify(options)});
   };
 }
 
-export type { AutoParamAstroOptions } from "./types.js";
+export type { AutoParamAstroOptions, AutoParamParamMode, AutoParamValue } from "./types.js";
