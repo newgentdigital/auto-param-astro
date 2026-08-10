@@ -14,6 +14,7 @@ const invalid: [name: string, options: unknown][] = [
   ["NaN param value", { params: { a: Number.NaN } }],
   ["unknown paramMode", { params: { a: "1" }, paramMode: "nope" }],
   ["non-array exemptDomains", { params: { a: "1" }, exemptDomains: "x" }],
+  ["non-boolean skipInternalLinks", { params: { a: "1" }, skipInternalLinks: "yes" }],
   ["array domainParams", { params: { a: "1" }, domainParams: [] }],
   ["empty domainParams hostname", { params: { a: "1" }, domainParams: { "  ": { a: "1" } } }],
   ["non-object domainParams entry", { params: { a: "1" }, domainParams: { "e.com": "x" } }],
@@ -39,6 +40,7 @@ describe("assertValidOptions", () => {
         domainParams: { "partner.com": { ref: "x" }, "shop.partner.com": {} },
         includeDomains: ["partner.com"],
         exemptDomains: ["example.com", "*.github.com"],
+        skipInternalLinks: true,
       }),
     ).not.toThrow();
   });
@@ -81,6 +83,23 @@ describe("resolveOptions", () => {
       { host: "partner.com", params: [["ref", "partner"]] },
       { host: "shop.partner.com", params: [["ref", "shop"]] },
     ]);
+  });
+
+  test("skipInternalLinks exempts the site host", () => {
+    const resolved = resolveOptions({ params: { a: 1 }, skipInternalLinks: true }, "www.acme.com");
+    expect(resolved.exemptDomains).toEqual(["www.acme.com"]);
+  });
+
+  test("the site host is ignored unless skipInternalLinks is on", () => {
+    expect(resolveOptions({ params: { a: 1 } }, "acme.com").exemptDomains).toEqual([]);
+  });
+
+  test("the site host is not duplicated in exemptDomains", () => {
+    const resolved = resolveOptions(
+      { params: { a: 1 }, skipInternalLinks: true, exemptDomains: ["acme.com"] },
+      "acme.com",
+    );
+    expect(resolved.exemptDomains).toEqual(["acme.com"]);
   });
 
   test("normalizes exempt domains", () => {

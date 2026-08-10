@@ -94,9 +94,6 @@ export function assertValidOptions(
       `[auto-param-astro] options.paramMode must be one of: ${PARAM_MODES.join(" | ")}.`,
     );
 
-  if (options.exemptDataAttributes !== undefined)
-    assertStringArray(options.exemptDataAttributes, "exemptDataAttributes");
-
   if (options.domainParams !== undefined) {
     if (
       !options.domainParams ||
@@ -120,24 +117,42 @@ export function assertValidOptions(
 
   if (options.exemptDomains !== undefined)
     assertStringArray(options.exemptDomains, "exemptDomains");
+
+  if (options.exemptDataAttributes !== undefined)
+    assertStringArray(options.exemptDataAttributes, "exemptDataAttributes");
+
+  if (options.skipInternalLinks !== undefined && typeof options.skipInternalLinks !== "boolean")
+    throw new Error("[auto-param-astro] options.skipInternalLinks must be a boolean.");
 }
 /* oxlint-enable typescript/no-unnecessary-condition */
 
 /**
- * Applies defaults and hoists the per-link work (regex compilation, value
- * stringification, host normalization) out of the rewrite hot path.
+ * Validates the options, applies defaults, and hoists the per-link work
+ * (stringification, host normalization) out of the rewrite hot path.
+ *
+ * @param options - User-supplied integration options.
+ * @param siteHostname - Hostname from Astro's `site` config, used to resolve
+ * `skipInternalLinks`. Ignored when that option is off.
+ * @throws If the options are unusable. See {@link assertValidOptions}.
  */
-export function resolveOptions(options: AutoParamAstroOptions): ResolvedAutoParamAstroOptions {
+export function resolveOptions(
+  options: AutoParamAstroOptions,
+  siteHostname?: string,
+): ResolvedAutoParamAstroOptions {
   assertValidOptions(options);
 
-  const exemptAttributeNames = options.exemptDataAttributes ?? DEFAULT_EXEMPT_DATA_ATTRIBUTES;
+  const exemptDomains = normalizeHostPatterns(options.exemptDomains ?? []);
+
+  // Internal links are implemented as an implicit exempt domain, so one code
+  // path handles both.
+  if (options.skipInternalLinks && siteHostname) {
+    const siteHost = normalizeHostPattern(siteHostname);
+    if (siteHost && !exemptDomains.includes(siteHost)) exemptDomains.push(siteHost);
+  }
 
   return {
     params: resolveParams(options.params),
     paramMode: options.paramMode ?? "preserve",
-    exemptAttributeNames: exemptAttributeNames
-      .map((name) => name.trim().toLowerCase())
-      .filter(Boolean),
     // Least specific first, so more specific hosts overwrite when merged.
     domainParams: Object.entries(options.domainParams ?? {})
       .map(([host, params]): ResolvedDomainParams => ({
@@ -147,7 +162,10 @@ export function resolveOptions(options: AutoParamAstroOptions): ResolvedAutoPara
       .filter((entry) => entry.host && entry.params.length > 0)
       .toSorted((a, b) => a.host.length - b.host.length),
     includeDomains: normalizeHostPatterns(options.includeDomains ?? []),
-    exemptDomains: normalizeHostPatterns(options.exemptDomains ?? []),
+    exemptDomains,
+    exemptAttributeNames: (options.exemptDataAttributes ?? DEFAULT_EXEMPT_DATA_ATTRIBUTES)
+      .map((name) => name.trim().toLowerCase())
+      .filter(Boolean),
   };
 }
 

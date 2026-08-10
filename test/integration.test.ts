@@ -48,15 +48,71 @@ async function setup(
   return { plugins };
 }
 
-const noopLogger = {
-  info: () => undefined,
-  warn: () => undefined,
-  error: () => undefined,
-  debug: () => undefined,
-  options: {} as never,
-  label: "test",
-  fork: () => noopLogger,
-};
+interface RecordingLogger {
+  info: (message: string) => void;
+  warn: (message: string) => void;
+  error: (message: string) => void;
+  debug: (message: string) => void;
+  messages: { level: string; message: string }[];
+  options: never;
+  label: string;
+  fork: () => RecordingLogger;
+}
+
+/** A logger that records what the integration reported, for assertions. */
+function createLogger(): RecordingLogger {
+  const messages: { level: string; message: string }[] = [];
+  const record = (level: string) => (message: string) => void messages.push({ level, message });
+
+  const logger: RecordingLogger = {
+    info: record("info"),
+    warn: record("warn"),
+    error: record("error"),
+    debug: record("debug"),
+    messages,
+    options: {} as never,
+    label: "test",
+    fork: () => logger,
+  };
+
+  return logger;
+}
+
+/** Invokes "astro:config:done" with a stub config, as Astro does after setup. */
+async function configDone(
+  integration: AstroIntegration,
+  site: string | undefined,
+  logger: RecordingLogger = createLogger(),
+): Promise<RecordingLogger> {
+  const hook = integration.hooks["astro:config:done"];
+  if (!hook) throw new Error("astro:config:done hook is missing");
+
+  await (hook as NonNullable<Hooks["astro:config:done"]>)({
+    config: { site },
+    logger,
+  } as never);
+
+  return logger;
+}
+
+/** Invokes "astro:build:done" against a directory of built HTML. */
+async function buildDone(
+  integration: AstroIntegration,
+  dir: string,
+  logger: RecordingLogger = createLogger(),
+): Promise<RecordingLogger> {
+  const hook = integration.hooks["astro:build:done"];
+  if (!hook) throw new Error("astro:build:done hook is missing");
+
+  await (hook as NonNullable<Hooks["astro:build:done"]>)({
+    dir: pathToFileURL(`${dir}/`),
+    logger,
+    pages: [],
+    assets: new Map(),
+  } as never);
+
+  return logger;
+}
 
 async function createFixture(): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "auto-param-"));
@@ -127,18 +183,81 @@ describe("autoParamAstro", () => {
     expect(code).toContain("middleware.js");
   });
 
+  test("bakes the site host into the virtual module once the config is resolved", async () => {
+    const integration = autoParamAstro({
+      params: { utm_source: "n" },
+      skipInternalLinks: true,
+    });
+    const { plugins } = await setup(integration);
+    const [plugin] = plugins as [VitePlugin];
+
+    // The module is loaded after "astro:config:done", so the host must be read
+    // lazily rather than captured when the plugin was created.
+    await configDone(integration, "https://acme.com/blog");
+
+    expect(plugin.load.handler(RESOLVED_VIRTUAL_ID) ?? "").toContain('"acme.com"');
+  });
+
+  test("warns when skipInternalLinks has no site to work from", async () => {
+    const integration = autoParamAstro({
+      params: { utm_source: "n" },
+      skipInternalLinks: true,
+    });
+    await setup(integration);
+
+    const logger = await configDone(integration, undefined);
+    expect(logger.messages).toEqual([
+      { level: "warn", message: expect.stringContaining("skipInternalLinks") },
+    ]);
+  });
+
+  test("warns when site is not a parseable URL", async () => {
+    const integration = autoParamAstro({
+      params: { utm_source: "n" },
+      skipInternalLinks: true,
+    });
+    await setup(integration);
+
+    const logger = await configDone(integration, "not a url");
+    expect(logger.messages.map((entry) => entry.level)).toEqual(["warn"]);
+  });
+
+  test("stays quiet about the site when skipInternalLinks is off", async () => {
+    const integration = autoParamAstro({ params: { utm_source: "n" } });
+    await setup(integration);
+
+    const logger = await configDone(integration, undefined);
+    expect(logger.messages).toEqual([]);
+  });
+
+  test("skips links to the site's own host in the build output", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "auto-param-internal-"));
+    await writeFile(
+      path.join(dir, "index.html"),
+      '<a href="https://acme.com/about">in</a><a href="https://other.com/">out</a>',
+    );
+
+    const integration = autoParamAstro({
+      params: { utm_source: "n" },
+      skipInternalLinks: true,
+    });
+    await setup(integration);
+    await configDone(integration, "https://acme.com");
+    await buildDone(integration, dir);
+
+    const html = await readFile(path.join(dir, "index.html"), "utf8");
+    expect(html).toBe(
+      '<a href="https://acme.com/about">in</a><a href="https://other.com/?utm_source=n">out</a>',
+    );
+  });
+
   test("rewrites every HTML file in the build output", async () => {
     const dir = await createFixture();
     const integration = autoParamAstro({
       params: { utm_source: "newsletter" },
     });
 
-    await (integration.hooks["astro:build:done"] as NonNullable<Hooks["astro:build:done"]>)({
-      dir: pathToFileURL(`${dir}/`),
-      logger: noopLogger,
-      pages: [],
-      assets: new Map(),
-    } as never);
+    await buildDone(integration, dir);
 
     const root = await readFile(path.join(dir, "index.html"), "utf8");
     const nested = await readFile(path.join(dir, "nested", "deep", "page.html"), "utf8");
@@ -153,13 +272,6 @@ describe("autoParamAstro", () => {
     const dir = await mkdtemp(path.join(tmpdir(), "auto-param-empty-"));
     const integration = autoParamAstro({ params: { utm_source: "n" } });
 
-    await expect(
-      (integration.hooks["astro:build:done"] as NonNullable<Hooks["astro:build:done"]>)({
-        dir: pathToFileURL(`${dir}/`),
-        logger: noopLogger,
-        pages: [],
-        assets: new Map(),
-      } as never),
-    ).resolves.toBeUndefined();
+    await expect(buildDone(integration, dir)).resolves.toBeDefined();
   });
 });

@@ -3,7 +3,7 @@ import { availableParallelism } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AstroIntegration } from "astro";
-import { escapeRegExp, resolveOptions } from "./options.js";
+import { assertValidOptions, escapeRegExp, resolveOptions } from "./options.js";
 import { rewriteHtml } from "./rewrite-html.js";
 import type { AutoParamAstroOptions, RewriteStats } from "./types.js";
 import { findHtmlFiles } from "./walk.js";
@@ -29,18 +29,33 @@ function exactMatch(id: string): RegExp {
   return new RegExp(`^${escapeRegExp(id)}$`);
 }
 
+/** The hostname of Astro's `site` config, or `undefined` when it is unset. */
+function siteHostname(site: string | undefined): string | undefined {
+  if (!site) return undefined;
+
+  try {
+    return new URL(site).hostname;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Serves a generated middleware module with the user's options baked in.
  *
  * Astro resolves integration middleware entrypoints through Vite, so a virtual
  * module lets us pass build-time configuration through without writing a
- * generated file to disk.
+ * generated file to disk. `getSiteHost` is read lazily because the module is
+ * loaded well after `astro:config:done` has resolved the site.
  *
  * The hooks use Vite 8's object form with an `id` filter. Astro 7 runs on
  * Rolldown, where an unfiltered hook is invoked across the JS/Rust boundary for
  * every single module; the filter keeps that to the one module we own.
  */
-function createMiddlewarePlugin(options: AutoParamAstroOptions) {
+function createMiddlewarePlugin(
+  options: AutoParamAstroOptions,
+  getSiteHost: () => string | undefined,
+) {
   return {
     name: VIRTUAL_MODULE_ID,
     resolveId: {
@@ -53,7 +68,7 @@ function createMiddlewarePlugin(options: AutoParamAstroOptions) {
         id === RESOLVED_VIRTUAL_MODULE_ID
           ? [
               `import { createMiddleware } from ${JSON.stringify(MIDDLEWARE_ENTRYPOINT)};`,
-              `export const onRequest = createMiddleware(${JSON.stringify(options)});`,
+              `export const onRequest = createMiddleware(${JSON.stringify(options)}, ${JSON.stringify(getSiteHost())});`,
             ].join("\n")
           : undefined,
     },
@@ -82,24 +97,34 @@ async function runPool<T>(
 }
 
 export default function autoParamAstro(options: AutoParamAstroOptions): AstroIntegration {
-  // Fail fast at config time rather than mid-build, and reuse the resolved
-  // form for the build pass.
-  const resolved = resolveOptions(options);
+  // Fail fast at config time rather than mid-build.
+  assertValidOptions(options);
+
+  let siteHost: string | undefined;
 
   return {
     name: NAME,
     hooks: {
       "astro:config:setup": ({ addMiddleware, updateConfig }) => {
         updateConfig({
-          vite: { plugins: [createMiddlewarePlugin(options)] },
+          vite: { plugins: [createMiddlewarePlugin(options, () => siteHost)] },
         });
 
         // Handles pages rendered on demand, plus prerendered pages at build time.
         addMiddleware({ entrypoint: VIRTUAL_MODULE_ID, order: "post" });
       },
+      "astro:config:done": ({ config, logger }) => {
+        siteHost = siteHostname(config.site);
+
+        if (options.skipInternalLinks && !siteHost)
+          logger.warn(
+            "skipInternalLinks needs `site` set in your Astro config. Until it is, links to your own domain are treated as external.",
+          );
+      },
       "astro:build:done": async ({ dir, logger }) => {
         const startedAt = performance.now();
         const outDir = fileURLToPath(dir);
+        const resolved = resolveOptions(options, siteHost);
 
         // Covers static assets the middleware never sees, such as raw HTML
         // files copied from `public/`.

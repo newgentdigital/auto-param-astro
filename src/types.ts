@@ -83,6 +83,20 @@ export interface AutoParamAstroOptions {
    * like '*.example.com'.
    */
   exemptDomains?: string[];
+
+  /**
+   * Leaves absolute links that point back at your own site alone.
+   *
+   * Your site is taken from Astro's `site` config, and subdomains of it count as
+   * internal too. Relative links are never rewritten regardless of this option;
+   * this only affects links written as `https://your-site.com/...`.
+   *
+   * Requires `site` to be set in `astro.config.mjs`. Without it the integration
+   * logs a warning and every absolute link stays eligible.
+   *
+   * @defaultValue `false`
+   */
+  skipInternalLinks?: boolean;
 }
 
 /** Extra parameters that apply to one host and its subdomains. */

@@ -300,6 +300,28 @@ describe("domainParams", () => {
   });
 });
 
+describe("skipInternalLinks", () => {
+  const options: AutoParamAstroOptions = { ...basic, skipInternalLinks: true };
+
+  test("leaves absolute links to the site host alone", () => {
+    const html = '<a href="https://acme.com/about">x</a><a href="https://www.acme.com/x">y</a>';
+    expect(rewriteHtml(html, resolveOptions(options, "acme.com")).html).toBe(html);
+  });
+
+  test("still rewrites other hosts", () => {
+    const out = rewriteHtml(
+      '<a href="https://other.com/">x</a>',
+      resolveOptions(options, "acme.com"),
+    );
+    expect(out.html).toContain("utm_source=newsletter");
+  });
+
+  test("without a site host every absolute link stays eligible", () => {
+    const out = rewriteHtml('<a href="https://acme.com/">x</a>', resolveOptions(options));
+    expect(out.html).toContain("utm_source=newsletter");
+  });
+});
+
 describe("statistics", () => {
   test("counts scanned and changed links", () => {
     const result = rewriteHtmlExternalLinks(

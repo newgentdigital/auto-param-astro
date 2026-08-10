@@ -10,9 +10,12 @@ const NULL_BODY_STATUSES = new Set([101, 103, 204, 205, 304]);
  * Creates the Astro middleware that rewrites external links in HTML responses
  * rendered on demand (and, for prerendered routes, at build time).
  */
-export function createMiddleware(options: AutoParamAstroOptions): MiddlewareHandler {
+export function createMiddleware(
+  options: AutoParamAstroOptions,
+  siteHostname?: string,
+): MiddlewareHandler {
   // Resolve once at module init, not once per request.
-  const resolved = resolveOptions(options);
+  const resolved = resolveOptions(options, siteHostname);
 
   return async (_context, next) => {
     const response = await next();
