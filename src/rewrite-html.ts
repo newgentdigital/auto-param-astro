@@ -233,7 +233,20 @@ function findSkippedRegions(html: string): readonly [number, number][] {
     }
   }
 
-  return regions.toSorted((a, b) => a[0] - b[0]);
+  // Each pattern scans the whole document independently, so one region can open
+  // inside another — `<!-- <script> -->` finds a "script" that is really just
+  // comment text, and an unterminated one would swallow the rest of the page.
+  // An opener inside an already-skipped region is not an opener at all.
+  const flattened: [number, number][] = [];
+  let coveredUntil = -1;
+
+  for (const region of regions.toSorted((a, b) => a[0] - b[0])) {
+    if (region[0] < coveredUntil) continue;
+    flattened.push(region);
+    coveredUntil = region[1];
+  }
+
+  return flattened;
 }
 
 export interface HtmlRewriteResult {

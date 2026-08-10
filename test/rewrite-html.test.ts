@@ -91,6 +91,17 @@ describe("link selection", () => {
     expect(out).toContain("utm_source=newsletter");
   });
 
+  test("still rewrites links that follow a commented-out script tag", () => {
+    // The `<script>` inside the comment is comment text, not an opening tag; if
+    // it were treated as one, its missing close would swallow the whole page.
+    const cases = [
+      '<!-- <script> --> <a href="https://example.com/">x</a>',
+      '<!-- <script src="x.js"></script> --><a href="https://example.com/">x</a>',
+      '<!-- <textarea> --><a href="https://example.com/">x</a>',
+    ];
+    for (const html of cases) expect(rewrite(html, basic)).toContain("utm_source=newsletter");
+  });
+
   test("rewrites area links inside an image map", () => {
     const out = rewrite('<area shape="rect" href="https://example.com/">', basic);
     expect(out).toBe('<area shape="rect" href="https://example.com/?utm_source=newsletter">');
