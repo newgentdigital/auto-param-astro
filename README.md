@@ -2,7 +2,12 @@
 
 # @newgentdigital/auto-param-astro
 
-Astro integration that adds configured query parameters to **external links** at **build time**.
+Astro integration that adds configured query parameters to **external links**, both at **build time** and for pages **rendered on demand**.
+
+## Requirements
+
+- Astro `^7.2.0`
+- Node `>=22.12.0` (or Bun)
 
 ## Install
 
@@ -36,12 +41,22 @@ export default defineConfig({
 
 ## How the integration works
 
-- Runs during the `astro:build:done` hook.
-- Walks the build output directory and rewrites `*.html` files.
-- Updates `<a href="https://...">` links (and protocol-relative `//...`) by inserting/updating `params`.
+It rewrites links in two places, so every route is covered:
+
+1. **Middleware** (registered via `addMiddleware`, `order: "post"`). Rewrites the HTML of pages rendered on demand, and of prerendered pages at build time. The middleware module is generated as a Vite virtual module with your options baked in — nothing is written to disk.
+2. **`astro:build:done`**. Walks the build output directory and rewrites every `*.html` file, which also covers static HTML copied from `public/` that the middleware never sees.
+
+Both passes are idempotent, so a page processed twice is unchanged by the second pass.
+
+In both cases the integration:
+
+- Updates `<a href="https://...">` links (and protocol-relative `//...`) by inserting or updating `params`.
+- Leaves alone: relative URLs, fragments, and non-HTTP schemes (`mailto:`, `tel:`, `javascript:`, `data:`, ...).
+- Never touches markup inside `<script>`, `<style>`, `<textarea>`, or HTML comments.
+- Only matches real `<a>` tags — custom elements such as `<a-scene>` are ignored.
 - Skips links that:
   - have any configured `exemptDataAttributes` present on the `<a>` tag
-  - point to a host in `exemptDomains` (exact match or subdomain match; also supports leading-wildcard `*.example.com`)
+  - point to a host in `exemptDomains` (exact match or subdomain match; `*.example.com` and `example.com` behave identically)
 
 ## Options
 
@@ -106,7 +121,5 @@ What result the integration generates depends on your `paramMode`:
 A link with the default attribute `data-auto-param-exempt` or one of the configured `exemptDataAttributes` will prevent the integration from updating the href for that link.
 
 ```html
-<a href="https://example.com" data-auto-param-exempt>
-  This link will not be modified.
-</a>
+<a href="https://example.com" data-auto-param-exempt> This link will not be modified. </a>
 ```
