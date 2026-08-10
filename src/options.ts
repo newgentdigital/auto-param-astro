@@ -1,4 +1,9 @@
-import type { AutoParamAstroOptions, ResolvedAutoParamAstroOptions } from "./types.js";
+import type {
+  AutoParamAstroOptions,
+  AutoParamMap,
+  ResolvedAutoParamAstroOptions,
+  ResolvedDomainParams,
+} from "./types.js";
 
 const PARAM_MODES = ["preserve", "override", "replace"] as const;
 
@@ -29,9 +34,43 @@ function normalizeHostPatterns(patterns: readonly string[]): string[] {
   return patterns.map(normalizeHostPattern).filter(Boolean);
 }
 
+/** Stringifies a validated parameter map into the pre-resolved entry form. */
+function resolveParams(params: AutoParamMap): (readonly [key: string, value: string])[] {
+  return Object.entries(params).map(([key, value]) => [key, String(value)] as const);
+}
+
 function assertStringArray(value: unknown, optionName: string): asserts value is string[] {
   if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string"))
     throw new Error(`[auto-param-astro] options.${optionName} must be an array of strings.`);
+}
+
+/** Validates one parameter map, naming `optionPath` in any error it throws. */
+function assertValidParamMap(
+  value: unknown,
+  optionPath: string,
+  { allowEmpty }: { allowEmpty: boolean },
+): asserts value is AutoParamMap {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error(`[auto-param-astro] options.${optionPath} must be an object.`);
+
+  const entries = Object.entries(value);
+  if (!allowEmpty && entries.length === 0)
+    throw new Error(
+      `[auto-param-astro] options.${optionPath} must contain at least one parameter.`,
+    );
+
+  for (const [key, entry] of entries) {
+    if (!key)
+      throw new Error(`[auto-param-astro] options.${optionPath} contains an empty parameter name.`);
+
+    if (typeof entry !== "string" && typeof entry !== "number" && typeof entry !== "boolean")
+      throw new Error(
+        `[auto-param-astro] options.${optionPath}.${key} must be a string, number, or boolean.`,
+      );
+
+    if (typeof entry === "number" && !Number.isFinite(entry))
+      throw new Error(`[auto-param-astro] options.${optionPath}.${key} must be a finite number.`);
+  }
 }
 
 /**
@@ -48,25 +87,7 @@ export function assertValidOptions(
   if (!options || typeof options !== "object")
     throw new Error("[auto-param-astro] Options are required.");
 
-  if (!options.params || typeof options.params !== "object" || Array.isArray(options.params))
-    throw new Error("[auto-param-astro] options.params must be an object.");
-
-  const entries = Object.entries(options.params);
-  if (entries.length === 0)
-    throw new Error("[auto-param-astro] options.params must contain at least one parameter.");
-
-  for (const [key, value] of entries) {
-    if (!key)
-      throw new Error("[auto-param-astro] options.params contains an empty parameter name.");
-
-    if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean")
-      throw new Error(
-        `[auto-param-astro] options.params.${key} must be a string, number, or boolean.`,
-      );
-
-    if (typeof value === "number" && !Number.isFinite(value))
-      throw new Error(`[auto-param-astro] options.params.${key} must be a finite number.`);
-  }
+  assertValidParamMap(options.params, "params", { allowEmpty: false });
 
   if (options.paramMode !== undefined && !PARAM_MODES.includes(options.paramMode))
     throw new Error(
@@ -75,6 +96,24 @@ export function assertValidOptions(
 
   if (options.exemptDataAttributes !== undefined)
     assertStringArray(options.exemptDataAttributes, "exemptDataAttributes");
+
+  if (options.domainParams !== undefined) {
+    if (
+      !options.domainParams ||
+      typeof options.domainParams !== "object" ||
+      Array.isArray(options.domainParams)
+    )
+      throw new Error(
+        "[auto-param-astro] options.domainParams must be an object keyed by hostname.",
+      );
+
+    for (const [host, params] of Object.entries(options.domainParams)) {
+      if (!normalizeHostPattern(host))
+        throw new Error("[auto-param-astro] options.domainParams contains an empty hostname.");
+
+      assertValidParamMap(params, `domainParams["${host}"]`, { allowEmpty: true });
+    }
+  }
 
   if (options.includeDomains !== undefined)
     assertStringArray(options.includeDomains, "includeDomains");
@@ -94,11 +133,19 @@ export function resolveOptions(options: AutoParamAstroOptions): ResolvedAutoPara
   const exemptAttributeNames = options.exemptDataAttributes ?? DEFAULT_EXEMPT_DATA_ATTRIBUTES;
 
   return {
-    params: Object.entries(options.params).map(([key, value]) => [key, String(value)] as const),
+    params: resolveParams(options.params),
     paramMode: options.paramMode ?? "preserve",
     exemptAttributeNames: exemptAttributeNames
       .map((name) => name.trim().toLowerCase())
       .filter(Boolean),
+    // Least specific first, so more specific hosts overwrite when merged.
+    domainParams: Object.entries(options.domainParams ?? {})
+      .map(([host, params]): ResolvedDomainParams => ({
+        host: normalizeHostPattern(host),
+        params: resolveParams(params),
+      }))
+      .filter((entry) => entry.host && entry.params.length > 0)
+      .toSorted((a, b) => a.host.length - b.host.length),
     includeDomains: normalizeHostPatterns(options.includeDomains ?? []),
     exemptDomains: normalizeHostPatterns(options.exemptDomains ?? []),
   };

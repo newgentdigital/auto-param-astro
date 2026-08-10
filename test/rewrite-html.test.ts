@@ -263,6 +263,43 @@ describe("includeDomains", () => {
   });
 });
 
+describe("domainParams", () => {
+  const options: AutoParamAstroOptions = {
+    params: { utm_source: "acme" },
+    domainParams: {
+      "partner.com": { ref: "partner" },
+      "shop.partner.com": { ref: "shop", utm_source: "acme-shop" },
+    },
+  };
+
+  test("merges the matching host's parameters on top of the global ones", () => {
+    const out = rewrite('<a href="https://partner.com/p">x</a>', options);
+    expect(out).toContain("utm_source=acme");
+    expect(out).toContain("ref=partner");
+  });
+
+  test("the most specific host wins", () => {
+    const out = rewrite('<a href="https://shop.partner.com/p">x</a>', options);
+    expect(out).toContain("utm_source=acme-shop");
+    expect(out).toContain("ref=shop");
+    expect(out).not.toContain("ref=partner");
+  });
+
+  test("hosts with no matching entry get the global parameters only", () => {
+    const out = rewrite('<a href="https://other.com/p">x</a>', options);
+    expect(out).toBe('<a href="https://other.com/p?utm_source=acme">x</a>');
+  });
+
+  test("a domain override applies under override mode too", () => {
+    const out = rewrite('<a href="https://shop.partner.com/p?ref=old">x</a>', {
+      ...options,
+      paramMode: "override",
+    });
+    expect(out).toContain("ref=shop");
+    expect(out).not.toContain("ref=old");
+  });
+});
+
 describe("statistics", () => {
   test("counts scanned and changed links", () => {
     const result = rewriteHtmlExternalLinks(

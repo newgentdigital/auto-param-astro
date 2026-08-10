@@ -56,6 +56,30 @@ function matchesHostList(hostname: string, patterns: readonly string[]): boolean
 }
 
 /**
+ * The parameters to apply to `hostname`: the global set, with every matching
+ * `domainParams` entry merged on top, most specific host last.
+ */
+function paramsForHost(
+  hostname: string,
+  options: ResolvedAutoParamAstroOptions,
+): readonly (readonly [key: string, value: string])[] {
+  if (options.domainParams.length === 0) return options.params;
+
+  const host = normalizeHost(hostname);
+  const matches = options.domainParams.filter(
+    (entry) => host === entry.host || host.endsWith(`.${entry.host}`),
+  );
+  if (matches.length === 0) return options.params;
+
+  // A Map keeps one entry per key, so the last write per key wins and the
+  // resulting order stays stable.
+  const merged = new Map(options.params);
+  for (const entry of matches) for (const [key, value] of entry.params) merged.set(key, value);
+
+  return [...merged];
+}
+
+/**
  * Finds the index of the `>` that closes a tag starting at `startIndex`,
  * skipping over quoted attribute values. Returns -1 if the tag is
  * unterminated.
@@ -199,7 +223,7 @@ function rewriteHref(rawHref: string, options: ResolvedAutoParamAstroOptions): s
 
   if (options.paramMode === "replace") url.search = "";
 
-  for (const [key, value] of options.params) {
+  for (const [key, value] of paramsForHost(url.hostname, options)) {
     if (options.paramMode === "preserve") {
       if (!url.searchParams.has(key)) url.searchParams.append(key, value);
       continue;

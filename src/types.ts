@@ -1,5 +1,8 @@
 export type AutoParamValue = string | number | boolean;
 
+/** A set of query parameters, keyed by parameter name. */
+export type AutoParamMap = Record<string, AutoParamValue>;
+
 export type AutoParamParamMode =
   /** (a) Respect existing parameters and only add missing configured ones. */
   | "preserve"
@@ -35,6 +38,28 @@ export interface AutoParamAstroOptions {
   exemptDataAttributes?: string[];
 
   /**
+   * Extra parameters for specific destinations, keyed by hostname.
+   *
+   * A host key matches that host and any subdomain of it, so `partner.com` also
+   * matches `shop.partner.com`. A leading `*.` is optional and changes nothing.
+   * Matching entries are merged on top of {@link AutoParamAstroOptions.params |
+   * params}, most specific host last, so a domain entry can override a global
+   * parameter for that destination.
+   *
+   * @example
+   * ```js
+   * params: { utm_source: "acme" },
+   * domainParams: {
+   *   "partner.com": { ref: "acme-partner" },
+   *   "shop.partner.com": { ref: "acme-shop", utm_medium: "affiliate" },
+   * }
+   * ```
+   *
+   * @defaultValue `{}`
+   */
+  domainParams?: Record<string, AutoParamMap>;
+
+  /**
    * Restricts rewriting to these hostnames. Every other link is left alone.
    *
    * Empty (the default) means every absolute `http(s)` link is eligible. Entries
@@ -60,6 +85,14 @@ export interface AutoParamAstroOptions {
   exemptDomains?: string[];
 }
 
+/** Extra parameters that apply to one host and its subdomains. */
+export interface ResolvedDomainParams {
+  /** Normalized hostname, with any leading `*.` stripped. */
+  host: string;
+  /** Parameters for this host, pre-stringified. */
+  params: readonly (readonly [key: string, value: string])[];
+}
+
 /**
  * Options after defaults have been applied and per-run work (attribute-name
  * lowercasing, param stringification) has been hoisted out of the hot path.
@@ -70,6 +103,8 @@ export interface ResolvedAutoParamAstroOptions {
   /** Configured parameters, pre-stringified. */
   params: readonly (readonly [key: string, value: string])[];
   paramMode: AutoParamParamMode;
+  /** Per-host parameter overrides, ordered least to most specific host. */
+  domainParams: readonly ResolvedDomainParams[];
   /** Normalized allowlist. Empty means every host is eligible. */
   includeDomains: readonly string[];
   /** Lowercased attribute names that exempt the tag they appear on. */
