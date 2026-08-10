@@ -9,7 +9,14 @@ export function escapeRegExp(value: string): string {
 }
 
 function normalizeHost(hostname: string): string {
-  return hostname.trim().toLowerCase().replace(/\.+$/, "");
+  const host = hostname.trim().toLowerCase();
+
+  // Strip the root-label dots without a regex: /\.+$/ backtracks quadratically
+  // on a long run of dots, and exempt domains come from user configuration.
+  let end = host.length;
+  while (end > 0 && host[end - 1] === ".") end--;
+
+  return host.slice(0, end);
 }
 
 function assertStringArray(value: unknown, optionName: string): asserts value is string[] {

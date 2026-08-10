@@ -23,21 +23,28 @@ const UNQUOTED_HREF = /\bhref\s*=\s*(?<value>[^\s"'<>`]+)/i;
 
 const NON_HTTP_SCHEME = /^(?:[a-z][a-z0-9+.-]*:)/i;
 
+/**
+ * Every spelling of an encoded ampersand, matched in one alternation.
+ *
+ * Decoding these in sequence rather than in a single pass would double-unescape:
+ * `&amp;#38;` encodes the literal text `&#38;`, but replacing `&amp;` first and
+ * `&#38;` second collapses it all the way down to `&`.
+ */
+const AMPERSAND_ENTITY_PATTERN = "&(?:amp|#0*38|#x0*26);";
+
+/** Global, for replaceAll. */
+const AMPERSAND_ENTITY_ALL = new RegExp(AMPERSAND_ENTITY_PATTERN, "gi");
+
+/** Non-global, so `test` cannot carry lastIndex between calls. */
+const AMPERSAND_ENTITY = new RegExp(AMPERSAND_ENTITY_PATTERN, "i");
+
 function decodeHrefAttributeValue(raw: string): string {
   // The most common case in generated HTML is &amp; in query strings.
-  return raw
-    .replaceAll("&amp;", "&")
-    .replaceAll("&#38;", "&")
-    .replaceAll("&#x26;", "&")
-    .replaceAll("&#X26;", "&");
+  return raw.replaceAll(AMPERSAND_ENTITY_ALL, "&");
 }
 
 function shouldEncodeAmpersands(rawOriginal: string): boolean {
-  return (
-    rawOriginal.includes("&amp;") ||
-    rawOriginal.includes("&#38;") ||
-    rawOriginal.toLowerCase().includes("&#x26;")
-  );
+  return AMPERSAND_ENTITY.test(rawOriginal);
 }
 
 function isDomainExempt(

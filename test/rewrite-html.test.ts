@@ -122,6 +122,19 @@ describe("attribute handling", () => {
     expect(raw).not.toContain("&amp;");
   });
 
+  test("decodes every spelling of an encoded ampersand", () => {
+    for (const entity of ["&amp;", "&#38;", "&#038;", "&#x26;", "&#X26;", "&#x0026;"]) {
+      const out = rewrite(`<a href="https://e.com/?a=1${entity}b=2">x</a>`, basic);
+      expect(out).toContain("a=1&amp;b=2&amp;utm_source=newsletter");
+    }
+  });
+
+  test("decodes encoded ampersands exactly one level", () => {
+    // "&amp;#38;" is the encoding of the literal text "&#38;". Decoding the
+    // entities in sequence rather than in one pass would collapse it to "&".
+    const out = rewrite(`<a href="https://e.com/?a=&amp;#38;">x</a>`, basic);
+    expect(out).toContain("#38;");
+  });
   test("does not touch other tags or surrounding markup", () => {
     const out = rewrite(`<p>before</p><a href="https://example.com/">x</a><p>after</p>`, basic);
     expect(out.startsWith("<p>before</p>")).toBe(true);
