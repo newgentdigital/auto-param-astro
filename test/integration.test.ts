@@ -24,19 +24,20 @@ interface VitePlugin {
 }
 
 /**
- * Invokes `astro:config:setup` with just enough of a stub to capture what the
+ * Invokes "astro:config:setup" with just enough of a stub to capture what the
  * integration registers.
  */
-function setup(
+async function setup(
   integration: AstroIntegration,
   overrides: { addMiddleware?: (mid: unknown) => void } = {},
-): { plugins: VitePlugin[] } {
+): Promise<{ plugins: VitePlugin[] }> {
   const plugins: VitePlugin[] = [];
 
   const hook = integration.hooks["astro:config:setup"];
   if (!hook) throw new Error("astro:config:setup hook is missing");
 
-  void (hook as NonNullable<Hooks["astro:config:setup"]>)({
+  // The hook may return void or a promise; await covers both.
+  await (hook as NonNullable<Hooks["astro:config:setup"]>)({
     addMiddleware: overrides.addMiddleware ?? (() => undefined),
     updateConfig: (config: { vite?: { plugins?: VitePlugin[] } }) => {
       plugins.push(...(config.vite?.plugins ?? []));
@@ -61,12 +62,12 @@ async function createFixture(): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "auto-param-"));
   await mkdir(path.join(dir, "nested", "deep"), { recursive: true });
 
-  await writeFile(path.join(dir, "index.html"), `<a href="https://example.com/">root</a>`);
+  await writeFile(path.join(dir, "index.html"), '<a href="https://example.com/">root</a>');
   await writeFile(
     path.join(dir, "nested", "deep", "page.html"),
-    `<a href="https://example.com/">nested</a>`,
+    '<a href="https://example.com/">nested</a>',
   );
-  await writeFile(path.join(dir, "skip.txt"), `<a href="https://example.com/">`);
+  await writeFile(path.join(dir, "skip.txt"), '<a href="https://example.com/">');
 
   return dir;
 }
@@ -88,9 +89,9 @@ describe("autoParamAstro", () => {
     expect(() => autoParamAstro({ params: {} } as never)).toThrow(/at least one parameter/);
   });
 
-  test("registers the middleware entrypoint and vite plugin", () => {
+  test("registers the middleware entrypoint and vite plugin", async () => {
     const middlewares: unknown[] = [];
-    const { plugins } = setup(autoParamAstro({ params: { utm_source: "n" } }), {
+    const { plugins } = await setup(autoParamAstro({ params: { utm_source: "n" } }), {
       addMiddleware: (mid) => middlewares.push(mid),
     });
 
@@ -99,8 +100,8 @@ describe("autoParamAstro", () => {
     expect(plugins[0]?.name).toBe(VIRTUAL_ID);
   });
 
-  test("the virtual module resolves and embeds the configured options", () => {
-    const { plugins } = setup(
+  test("the virtual module resolves and embeds the configured options", async () => {
+    const { plugins } = await setup(
       autoParamAstro({
         params: { utm_source: "n" },
         paramMode: "override",
@@ -122,7 +123,7 @@ describe("autoParamAstro", () => {
 
     const code = plugin.load.handler(RESOLVED_VIRTUAL_ID) ?? "";
     expect(code).toContain("createMiddleware");
-    expect(code).toContain(`"paramMode":"override"`);
+    expect(code).toContain('"paramMode":"override"');
     expect(code).toContain("middleware.js");
   });
 

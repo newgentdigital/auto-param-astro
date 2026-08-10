@@ -40,7 +40,7 @@ describe("paramMode", () => {
   });
 
   test("boolean and number values are stringified", () => {
-    const out = rewrite(`<a href="https://example.com/">x</a>`, options);
+    const out = rewrite('<a href="https://example.com/">x</a>', options);
     expect(out).toContain("ref=true");
     expect(out).toContain("v=2");
   });
@@ -56,75 +56,76 @@ describe("paramMode", () => {
 
 describe("link selection", () => {
   test("leaves relative URLs alone", () => {
-    const html = `<a href="/about">x</a><a href="./y">y</a><a href="#top">t</a>`;
+    const html = '<a href="/about">x</a><a href="./y">y</a><a href="#top">t</a>';
     expect(rewrite(html, basic)).toBe(html);
   });
 
   test("leaves non-HTTP schemes alone", () => {
-    const html = `<a href="mailto:a@b.c">m</a><a href="tel:+1">t</a><a href="javascript:void(0)">j</a><a href="data:text/html,x">d</a>`;
+    const html =
+      '<a href="mailto:a@b.c">m</a><a href="tel:+1">t</a><a href="javascript:void(0)">j</a><a href="data:text/html,x">d</a>';
     expect(rewrite(html, basic)).toBe(html);
   });
 
   test("rewrites protocol-relative URLs without adding a scheme", () => {
-    const out = rewrite(`<a href="//example.com/p">x</a>`, basic);
-    expect(out).toBe(`<a href="//example.com/p?utm_source=newsletter">x</a>`);
+    const out = rewrite('<a href="//example.com/p">x</a>', basic);
+    expect(out).toBe('<a href="//example.com/p?utm_source=newsletter">x</a>');
   });
 
   test("ignores custom elements whose name starts with 'a'", () => {
-    const html = `<a-scene href="https://example.com/">x</a-scene>`;
+    const html = '<a-scene href="https://example.com/">x</a-scene>';
     expect(rewrite(html, basic)).toBe(html);
   });
 
   test("ignores links inside script, style, textarea, and comments", () => {
     const cases = [
-      `<script>const s = "<a href='https://example.com/'>";</script>`,
-      `<style>/* <a href="https://example.com/"> */</style>`,
-      `<textarea><a href="https://example.com/">x</a></textarea>`,
-      `<!-- <a href="https://example.com/">x</a> -->`,
+      "<script>const s = \"<a href='https://example.com/'>\";</script>",
+      '<style>/* <a href="https://example.com/"> */</style>',
+      '<textarea><a href="https://example.com/">x</a></textarea>',
+      '<!-- <a href="https://example.com/">x</a> -->',
     ];
     for (const html of cases) expect(rewrite(html, basic)).toBe(html);
   });
 
   test("still rewrites links that follow a script block", () => {
-    const out = rewrite(`<script>var a = 1;</script><a href="https://example.com/">x</a>`, basic);
+    const out = rewrite('<script>var a = 1;</script><a href="https://example.com/">x</a>', basic);
     expect(out).toContain("utm_source=newsletter");
   });
 
   test("leaves unparseable URLs alone", () => {
-    const html = `<a href="https://exa mple.com">x</a><a href="">e</a>`;
+    const html = '<a href="https://exa mple.com">x</a><a href="">e</a>';
     expect(rewrite(html, basic)).toBe(html);
   });
 });
 
 describe("attribute handling", () => {
   test("handles a '>' inside another attribute value", () => {
-    const out = rewrite(`<a title="a>b" href="https://example.com/">x</a>`, basic);
-    expect(out).toBe(`<a title="a>b" href="https://example.com/?utm_source=newsletter">x</a>`);
+    const out = rewrite('<a title="a>b" href="https://example.com/">x</a>', basic);
+    expect(out).toBe('<a title="a>b" href="https://example.com/?utm_source=newsletter">x</a>');
   });
 
   test("preserves the original quote style", () => {
-    const out = rewrite(`<a href='https://example.com/'>x</a>`, basic);
-    expect(out).toBe(`<a href='https://example.com/?utm_source=newsletter'>x</a>`);
+    const out = rewrite("<a href='https://example.com/'>x</a>", basic);
+    expect(out).toBe("<a href='https://example.com/?utm_source=newsletter'>x</a>");
   });
 
   test("quotes a previously unquoted href", () => {
-    const out = rewrite(`<a href=https://example.com/>x</a>`, basic);
-    expect(out).toBe(`<a href="https://example.com/?utm_source=newsletter">x</a>`);
+    const out = rewrite("<a href=https://example.com/>x</a>", basic);
+    expect(out).toBe('<a href="https://example.com/?utm_source=newsletter">x</a>');
   });
 
   test("re-encodes ampersands only when the source was encoded", () => {
-    const encoded = rewrite(`<a href="https://e.com/?a=1&amp;b=2">x</a>`, basic);
+    const encoded = rewrite('<a href="https://e.com/?a=1&amp;b=2">x</a>', basic);
     expect(encoded).toContain("&amp;utm_source=newsletter");
     expect(encoded).not.toMatch(/[^p];b=2&utm/);
 
-    const raw = rewrite(`<a href="https://e.com/?a=1&b=2">x</a>`, basic);
+    const raw = rewrite('<a href="https://e.com/?a=1&b=2">x</a>', basic);
     expect(raw).toContain("&utm_source=newsletter");
     expect(raw).not.toContain("&amp;");
   });
 
   test("decodes every spelling of an encoded ampersand", () => {
     for (const entity of ["&amp;", "&#38;", "&#038;", "&#x26;", "&#X26;", "&#x0026;"]) {
-      const out = rewrite(`<a href="https://e.com/?a=1${entity}b=2">x</a>`, basic);
+      const out = rewrite('<a href="https://e.com/?a=1' + entity + 'b=2">x</a>', basic);
       expect(out).toContain("a=1&amp;b=2&amp;utm_source=newsletter");
     }
   });
@@ -132,11 +133,12 @@ describe("attribute handling", () => {
   test("decodes encoded ampersands exactly one level", () => {
     // "&amp;#38;" is the encoding of the literal text "&#38;". Decoding the
     // entities in sequence rather than in one pass would collapse it to "&".
-    const out = rewrite(`<a href="https://e.com/?a=&amp;#38;">x</a>`, basic);
+    const out = rewrite('<a href="https://e.com/?a=&amp;#38;">x</a>', basic);
     expect(out).toContain("#38;");
   });
+
   test("does not touch other tags or surrounding markup", () => {
-    const out = rewrite(`<p>before</p><a href="https://example.com/">x</a><p>after</p>`, basic);
+    const out = rewrite('<p>before</p><a href="https://example.com/">x</a><p>after</p>', basic);
     expect(out.startsWith("<p>before</p>")).toBe(true);
     expect(out.endsWith("<p>after</p>")).toBe(true);
   });
@@ -144,18 +146,18 @@ describe("attribute handling", () => {
 
 describe("exemptions", () => {
   test("respects the default exempt data attribute", () => {
-    const html = `<a href="https://example.com/" data-auto-param-exempt>x</a>`;
+    const html = '<a href="https://example.com/" data-auto-param-exempt>x</a>';
     expect(rewrite(html, basic)).toBe(html);
   });
 
   test("respects custom exempt data attributes", () => {
-    const html = `<a href="https://example.com/" data-no-params="">x</a>`;
+    const html = '<a href="https://example.com/" data-no-params="">x</a>';
     expect(rewrite(html, { ...basic, exemptDataAttributes: ["data-no-params"] })).toBe(html);
   });
 
   test("does not treat a substring of another attribute as exempt", () => {
     const out = rewrite(
-      `<a href="https://example.com/" data-auto-param-exempted-thing="1">x</a>`,
+      '<a href="https://example.com/" data-auto-param-exempted-thing="1">x</a>',
       basic,
     );
     expect(out).toContain("utm_source=newsletter");
@@ -163,18 +165,18 @@ describe("exemptions", () => {
 
   test("exempts a domain and its subdomains", () => {
     const options = { ...basic, exemptDomains: ["example.com"] };
-    const html = `<a href="https://www.example.com/">x</a><a href="https://example.com/">y</a>`;
+    const html = '<a href="https://www.example.com/">x</a><a href="https://example.com/">y</a>';
     expect(rewrite(html, options)).toBe(html);
   });
 
   test("treats a leading wildcard entry the same as a bare domain", () => {
     const options = { ...basic, exemptDomains: ["*.github.com"] };
-    const html = `<a href="https://gist.github.com/">x</a>`;
+    const html = '<a href="https://gist.github.com/">x</a>';
     expect(rewrite(html, options)).toBe(html);
   });
 
   test("does not exempt a domain that merely ends with the entry", () => {
-    const out = rewrite(`<a href="https://notexample.com/">x</a>`, {
+    const out = rewrite('<a href="https://notexample.com/">x</a>', {
       ...basic,
       exemptDomains: ["example.com"],
     });
@@ -182,7 +184,7 @@ describe("exemptions", () => {
   });
 
   test("matches exempt domains case-insensitively and ignores trailing dots", () => {
-    const out = rewrite(`<a href="https://WWW.Example.com./">x</a>`, {
+    const out = rewrite('<a href="https://WWW.Example.com./">x</a>', {
       ...basic,
       exemptDomains: ["  Example.COM  "],
     });
@@ -193,7 +195,7 @@ describe("exemptions", () => {
 describe("statistics", () => {
   test("counts scanned and changed links", () => {
     const result = rewriteHtmlExternalLinks(
-      `<a href="https://a.com/">1</a><a href="/rel">2</a><a href="https://b.com/?utm_source=newsletter">3</a>`,
+      '<a href="https://a.com/">1</a><a href="/rel">2</a><a href="https://b.com/?utm_source=newsletter">3</a>',
       basic,
     );
     expect(result.linksScanned).toBe(3);
@@ -203,7 +205,7 @@ describe("statistics", () => {
 
 describe("resolved options", () => {
   test("rewriteHtml matches rewriteHtmlExternalLinks", () => {
-    const html = `<a href="https://e.com/">x</a>`;
+    const html = '<a href="https://e.com/">x</a>';
     const resolved = resolveOptions(basic);
 
     expect(rewriteHtml(html, resolved).html).toContain("utm_source=newsletter");

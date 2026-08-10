@@ -12,7 +12,7 @@ function run(response: Response): Promise<Response> {
 describe("createMiddleware", () => {
   test("rewrites external links in HTML responses", async () => {
     const result = await run(
-      new Response(`<a href="https://example.com/">x</a>`, {
+      new Response('<a href="https://example.com/">x</a>', {
         headers: { "content-type": "text/html; charset=utf-8" },
       }),
     );
@@ -20,7 +20,7 @@ describe("createMiddleware", () => {
   });
 
   test("drops stale content-length and content-encoding headers", async () => {
-    const body = `<a href="https://example.com/">x</a>`;
+    const body = '<a href="https://example.com/">x</a>';
     const result = await run(
       new Response(body, {
         headers: {
@@ -39,7 +39,7 @@ describe("createMiddleware", () => {
 
   test("preserves status and statusText", async () => {
     const result = await run(
-      new Response(`<a href="https://example.com/">x</a>`, {
+      new Response('<a href="https://example.com/">x</a>', {
         status: 404,
         statusText: "Not Found",
         headers: { "content-type": "text/html" },
@@ -50,7 +50,7 @@ describe("createMiddleware", () => {
   });
 
   test("passes through non-HTML responses untouched", async () => {
-    const response = new Response(`{"href":"https://example.com/"}`, {
+    const response = new Response('{"href":"https://example.com/"}', {
       headers: { "content-type": "application/json" },
     });
     expect(await run(response)).toBe(response);
