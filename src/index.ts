@@ -164,4 +164,11 @@ export default function autoParamAstro(options: AutoParamAstroOptions): AstroInt
   };
 }
 
-export type { AutoParamAstroOptions, AutoParamParamMode, AutoParamValue } from "./types.js";
+export { rewriteHtmlExternalLinks } from "./rewrite-html.js";
+export type { HtmlRewriteResult } from "./rewrite-html.js";
+export type {
+  AutoParamAstroOptions,
+  AutoParamMap,
+  AutoParamParamMode,
+  AutoParamValue,
+} from "./types.js";
