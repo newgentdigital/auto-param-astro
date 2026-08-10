@@ -1,6 +1,6 @@
 {
   "name": "@newgentdigital/auto-param-astro",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": false,
   "description": "Automatically add your parameters to external links and URLs during build time with Astro.",
   "keywords": [
