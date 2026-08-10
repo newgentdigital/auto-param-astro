@@ -275,18 +275,37 @@ function findSkippedRegions(html: string): readonly [number, number][] {
   return flattened;
 }
 
+/** What a call to {@link rewriteHtml} changed. */
 export interface HtmlRewriteResult {
+  /** The rewritten document, or the input unchanged when nothing matched. */
   html: string;
+  /** Links considered, including those left alone. */
   linksScanned: number;
+  /** Links whose `href` was actually changed. */
   linksChanged: number;
 }
 
 /**
- * Rewrites external `<a href>` and `<area href>` targets in an HTML document, adding the
- * configured query parameters according to `paramMode`.
+ * Rewrites the external `<a href>` and `<area href>` targets in an HTML
+ * document, adding the configured query parameters according to `paramMode`.
  *
+ * The rewrite is idempotent: running it twice over the same document produces
+ * the same result as running it once.
+ *
+ * @param html - A complete or partial HTML document.
+ * @param options - The same options the integration takes.
+ * @throws If the options are unusable. See {@link assertValidOptions}.
+ *
+ * @example
+ * ```ts
+ * const { html } = rewriteHtmlExternalLinks(source, {
+ *   params: { utm_source: "docs" },
+ * });
+ * ```
+ *
+ * @remarks
  * Callers that process many documents should resolve their options once with
- * `resolveOptions()` and call `rewriteHtml()` instead.
+ * `resolveOptions()` and call {@link rewriteHtml} instead.
  */
 export function rewriteHtmlExternalLinks(
   html: string,
@@ -295,7 +314,12 @@ export function rewriteHtmlExternalLinks(
   return rewriteHtml(html, resolveOptions(options));
 }
 
-/** As `rewriteHtmlExternalLinks`, but skips per-call option resolution. */
+/**
+ * As {@link rewriteHtmlExternalLinks}, but takes pre-resolved options so that
+ * repeated calls skip validation and regex compilation.
+ *
+ * @internal
+ */
 export function rewriteHtml(
   html: string,
   options: ResolvedAutoParamAstroOptions,

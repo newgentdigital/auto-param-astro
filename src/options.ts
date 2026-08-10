@@ -13,6 +13,10 @@ export function escapeRegExp(value: string): string {
   return value.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/**
+ * Lowercases a hostname and strips the trailing root label, so `Example.COM.`
+ * and `example.com` compare equal.
+ */
 function normalizeHost(hostname: string): string {
   const host = hostname.trim().toLowerCase();
 

@@ -14,13 +14,13 @@ const invalid: [name: string, options: unknown][] = [
   ["NaN param value", { params: { a: Number.NaN } }],
   ["unknown paramMode", { params: { a: "1" }, paramMode: "nope" }],
   ["non-array exemptDomains", { params: { a: "1" }, exemptDomains: "x" }],
+  ["non-array includeDomains", { params: { a: "1" }, exemptDomains: [], includeDomains: "x" }],
+  ["non-string exemptDataAttributes entry", { params: { a: "1" }, exemptDataAttributes: [1] }],
   ["non-boolean skipInternalLinks", { params: { a: "1" }, skipInternalLinks: "yes" }],
   ["array domainParams", { params: { a: "1" }, domainParams: [] }],
   ["empty domainParams hostname", { params: { a: "1" }, domainParams: { "  ": { a: "1" } } }],
   ["non-object domainParams entry", { params: { a: "1" }, domainParams: { "e.com": "x" } }],
   ["invalid domainParams value", { params: { a: "1" }, domainParams: { "e.com": { a: null } } }],
-  ["non-array includeDomains", { params: { a: "1" }, exemptDomains: [], includeDomains: "x" }],
-  ["non-string exemptDataAttributes entry", { params: { a: "1" }, exemptDataAttributes: [1] }],
 ];
 
 describe("assertValidOptions", () => {
@@ -36,14 +36,15 @@ describe("assertValidOptions", () => {
       assertValidOptions({
         params: { a: "1", b: 2, c: false },
         paramMode: "replace",
-        exemptDataAttributes: ["data-x"],
         domainParams: { "partner.com": { ref: "x" }, "shop.partner.com": {} },
         includeDomains: ["partner.com"],
+        exemptDataAttributes: ["data-x"],
         exemptDomains: ["example.com", "*.github.com"],
         skipInternalLinks: true,
       }),
     ).not.toThrow();
   });
+
   test("names the offending domainParams host in the error", () => {
     expect(() =>
       assertValidOptions({
@@ -59,9 +60,9 @@ describe("resolveOptions", () => {
     const resolved = resolveOptions({ params: { a: 1 } });
     expect(resolved.paramMode).toBe("preserve");
     expect(resolved.exemptDomains).toEqual([]);
+    expect(resolved.exemptAttributeNames).toEqual(["data-auto-param-exempt"]);
     expect(resolved.includeDomains).toEqual([]);
     expect(resolved.domainParams).toEqual([]);
-    expect(resolved.exemptAttributeNames).toEqual(["data-auto-param-exempt"]);
     expect(resolved.params).toEqual([["a", "1"]]);
   });
 

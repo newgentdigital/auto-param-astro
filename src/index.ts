@@ -96,6 +96,32 @@ async function runPool<T>(
   await Promise.all(runners);
 }
 
+/**
+ * Adds query parameters to the outbound links in your site's HTML, both at build
+ * time and for pages rendered on demand.
+ *
+ * Register it in `astro.config.mjs`. Options are validated immediately, so a
+ * typo fails the config rather than the build.
+ *
+ * @param options - See {@link AutoParamAstroOptions}. Only `params` is required.
+ * @throws If the options are unusable, with a message naming the offending field.
+ *
+ * @example
+ * ```js
+ * // astro.config.mjs
+ * import autoParamAstro from "@newgentdigital/auto-param-astro";
+ * import { defineConfig } from "astro/config";
+ *
+ * export default defineConfig({
+ *   integrations: [
+ *     autoParamAstro({
+ *       params: { utm_source: "acme", utm_medium: "referral" },
+ *       skipInternalLinks: true,
+ *     }),
+ *   ],
+ * });
+ * ```
+ */
 export default function autoParamAstro(options: AutoParamAstroOptions): AstroIntegration {
   // Fail fast at config time rather than mid-build.
   assertValidOptions(options);

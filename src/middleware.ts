@@ -7,8 +7,22 @@ import type { AutoParamAstroOptions } from "./types.js";
 const NULL_BODY_STATUSES = new Set([101, 103, 204, 205, 304]);
 
 /**
- * Creates the Astro middleware that rewrites external links in HTML responses
- * rendered on demand (and, for prerendered routes, at build time).
+ * Creates the Astro middleware that rewrites links in HTML responses rendered on
+ * demand (and, for prerendered routes, at build time).
+ *
+ * The integration registers this for you. Call it directly only if you want the
+ * on-demand rewrite without the rest of the integration, by exporting the result
+ * from `src/middleware.ts`.
+ *
+ * @param options - See `AutoParamAstroOptions`. Resolved once, at module init.
+ * @param siteHostname - Hostname treated as internal when `skipInternalLinks` is
+ * on. The integration passes Astro's `site` here; supply it yourself otherwise.
+ * @throws If the options are unusable, at module init rather than per request.
+ *
+ * @remarks
+ * Rewriting needs the whole document, so this buffers the response body and
+ * pages rendered on demand no longer stream. Non-HTML responses pass straight
+ * through untouched.
  */
 export function createMiddleware(
   options: AutoParamAstroOptions,

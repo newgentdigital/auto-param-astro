@@ -1,41 +1,52 @@
+/** A query parameter value. Numbers and booleans are stringified as written. */
 export type AutoParamValue = string | number | boolean;
 
 /** A set of query parameters, keyed by parameter name. */
 export type AutoParamMap = Record<string, AutoParamValue>;
 
+/** How configured parameters are merged with parameters already on a link. */
 export type AutoParamParamMode =
-  /** (a) Respect existing parameters and only add missing configured ones. */
+  /** Existing values win; only missing configured parameters are added. */
   | "preserve"
-  /** (b) Add missing configured ones and overwrite configured keys if present. */
+  /** Configured parameters win; existing values for those keys are overwritten. */
   | "override"
-  /** (c) Remove all existing parameters and add only configured ones. */
+  /** Every existing parameter is dropped, then configured parameters are added. */
   | "replace";
 
+/**
+ * Configuration for the `auto-param-astro` integration.
+ *
+ * Only {@link AutoParamAstroOptions.params | params} is required. Every other
+ * field narrows which links are touched, or varies the parameters per
+ * destination.
+ */
 export interface AutoParamAstroOptions {
   /**
-   * Query parameters to add to every external link.
+   * Query parameters to add to matching links.
    *
-   * Example: { utm_source: 'newsletter', utm_medium: 'email' }
+   * At least one parameter is required. Values are stringified, so `2` becomes
+   * `v=2` and `true` becomes `ref=true`.
+   *
+   * @example
+   * ```js
+   * params: { utm_source: "newsletter", utm_medium: "email" }
+   * ```
    */
-  params: Record<string, AutoParamValue>;
+  params: AutoParamMap;
 
   /**
-   * Controls how query parameters are merged.
+   * How configured parameters are merged with parameters already on the link.
    *
-   * - `preserve` (default): existing URL parameters win; only missing configured
-   *   params are added.
-   * - `override`: configured params win; existing values are overwritten for
-   *   matching keys.
-   * - `replace`: drop all existing URL parameters and add only configured params.
+   * - `preserve` (default): existing values win; only missing configured
+   *   parameters are added.
+   * - `override`: configured parameters win; existing values for those keys are
+   *   overwritten.
+   * - `replace`: every existing parameter is dropped, then configured
+   *   parameters are added.
+   *
+   * @defaultValue `"preserve"`
    */
   paramMode?: AutoParamParamMode;
-
-  /**
-   * Data-attributes that, when present on an <a> tag, opt that link out.
-   *
-   * Example: ['data-auto-param-exempt', 'data-no-params']
-   */
-  exemptDataAttributes?: string[];
 
   /**
    * Extra parameters for specific destinations, keyed by hostname.
@@ -76,13 +87,28 @@ export interface AutoParamAstroOptions {
   includeDomains?: string[];
 
   /**
-   * Domains that are exempt globally.
+   * Hostnames that are never rewritten.
    *
-   * Matches exact domains and subdomains (e.g. 'example.com' matches
-   * 'example.com' and 'www.example.com'). Supports leading-wildcard entries
-   * like '*.example.com'.
+   * Entries match the host and its subdomains, so `example.com` also covers
+   * `www.example.com`. A leading `*.` is optional and changes nothing.
+   *
+   * @defaultValue `[]`
    */
   exemptDomains?: string[];
+
+  /**
+   * Attribute names that opt a single link out when present on its tag.
+   *
+   * Pass an empty array to disable attribute-based exemptions entirely.
+   *
+   * @example
+   * ```html
+   * <a href="https://example.com" data-auto-param-exempt>Untagged link</a>
+   * ```
+   *
+   * @defaultValue `["data-auto-param-exempt"]`
+   */
+  exemptDataAttributes?: string[];
 
   /**
    * Leaves absolute links that point back at your own site alone.
@@ -109,29 +135,34 @@ export interface ResolvedDomainParams {
 
 /**
  * Options after defaults have been applied and per-run work (attribute-name
- * lowercasing, param stringification) has been hoisted out of the hot path.
+ * lowercasing, parameter stringification, host normalization) has been hoisted
+ * out of the hot path.
  *
  * @internal
  */
 export interface ResolvedAutoParamAstroOptions {
-  /** Configured parameters, pre-stringified. */
+  /** Globally configured parameters, pre-stringified. */
   params: readonly (readonly [key: string, value: string])[];
   paramMode: AutoParamParamMode;
   /** Per-host parameter overrides, ordered least to most specific host. */
   domainParams: readonly ResolvedDomainParams[];
   /** Normalized allowlist. Empty means every host is eligible. */
   includeDomains: readonly string[];
-  /** Lowercased attribute names that exempt the tag they appear on. */
-  exemptAttributeNames: readonly string[];
   /**
    * Normalized exempt hostnames, with any leading `*.` stripped. Each entry
    * matches itself and any subdomain of itself.
    */
   exemptDomains: readonly string[];
+  /** Lowercased attribute names that exempt the tag they appear on. */
+  exemptAttributeNames: readonly string[];
 }
 
+/** What a build-time rewrite pass changed, for the summary log line. */
 export interface RewriteStats {
+  /** HTML files whose contents were rewritten. */
   filesChanged: number;
+  /** Links considered, including those left alone. */
   linksScanned: number;
+  /** Links whose `href` was actually changed. */
   linksChanged: number;
 }
