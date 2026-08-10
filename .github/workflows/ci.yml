@@ -23,6 +23,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
+        with:
+          # On pull_request, checkout defaults to the ephemeral merge commit,
+          # which does not exist upstream. DeepSource cannot attribute coverage
+          # to it, so check out the pull request head instead.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # No step needs authenticated git after checkout.
+          persist-credentials: false
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2.2.0

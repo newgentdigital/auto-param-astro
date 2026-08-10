@@ -1,15 +1,21 @@
 name: Publish to npm and GitHub Packages
 
+# Called only by release-please after it cuts a release. There is deliberately
+# no manual or tag trigger: every publish must correspond to a release.
+#
+# This stays a separate file because npm Trusted Publishing authorises by
+# workflow filename, and the OIDC job_workflow_ref claim for a reusable
+# workflow is this file rather than the caller.
 on:
-  release:
-    types: [published]
-  push:
-    tags:
-      - "v*.*.*"
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      tag:
+        description: The release tag to publish, e.g. v2.0.0.
+        required: true
+        type: string
 
 concurrency:
-  group: publish-${{ github.ref }}
+  group: publish-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
@@ -25,18 +31,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Publish the tagged commit, not whatever main happens to point at.
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2.2.0
         with:
           bun-version: latest
-
-      - name: Setup Node
-        uses: actions/setup-node@v7.0.0
-        with:
-          node-version: 24
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -52,6 +54,9 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+          # This job holds an OIDC token; a poisoned dependency cache could
+          # expose it to attacker-controlled code. Nothing here needs the cache.
+          package-manager-cache: false
 
       - name: Publish package to npm
         run: npm publish --provenance --access public
@@ -62,6 +67,7 @@ jobs:
           node-version: 24
           registry-url: https://npm.pkg.github.com
           scope: "@newgentdigital"
+          package-manager-cache: false
 
       - name: Publish package to GitHub Packages
         run: npm publish
