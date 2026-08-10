@@ -3,9 +3,12 @@ name: Publish to npm and GitHub Packages
 # Called only by release-please after it cuts a release. There is deliberately
 # no manual or tag trigger: every publish must correspond to a release.
 #
-# This stays a separate file because npm Trusted Publishing authorises by
-# workflow filename, and the OIDC job_workflow_ref claim for a reusable
-# workflow is this file rather than the caller.
+# npm Trusted Publishing must therefore be configured against the CALLING
+# workflow, release-please.yml, not this file. npm validates the workflow_ref
+# claim, which for a reusable workflow is the caller:
+# https://docs.npmjs.com/trusted-publishers
+#
+# id-token: write is required on both this job and the calling job.
 on:
   workflow_call:
     inputs:
