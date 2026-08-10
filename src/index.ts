@@ -156,9 +156,12 @@ export default function autoParamAstro(options: AutoParamAstroOptions): AstroInt
         });
 
         const elapsedMs = Math.round(performance.now() - startedAt);
-        logger.info(
-          `Updated ${stats.linksChanged}/${stats.linksScanned} external links across ${stats.filesChanged}/${htmlFiles.length} HTML files in ${elapsedMs}ms (outDir: ${path.basename(outDir)}).`,
-        );
+        const summary = `Added parameters to ${stats.linksChanged} of ${stats.linksScanned} links in ${stats.filesChanged} of ${htmlFiles.length} HTML files (${elapsedMs}ms).`;
+
+        // A build that changed nothing is either correct or misconfigured, and
+        // the log line cannot tell which; keep it out of the default output.
+        if (stats.linksChanged === 0) logger.debug(summary);
+        else logger.info(summary);
       },
     },
   };

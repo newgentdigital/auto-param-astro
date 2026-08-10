@@ -251,6 +251,18 @@ describe("autoParamAstro", () => {
     );
   });
 
+  test("reports what it changed at info level, and silence at debug level", async () => {
+    const dir = await createFixture();
+    const changed = await buildDone(autoParamAstro({ params: { utm_source: "n" } }), dir);
+    expect(changed.messages).toEqual([
+      { level: "info", message: expect.stringContaining("Added parameters to 2 of 2 links") },
+    ]);
+
+    // Nothing left to change: the same pass a second time is not news.
+    const unchanged = await buildDone(autoParamAstro({ params: { utm_source: "n" } }), dir);
+    expect(unchanged.messages.map((entry) => entry.level)).toEqual(["debug"]);
+  });
+
   test("rewrites every HTML file in the build output", async () => {
     const dir = await createFixture();
     const integration = autoParamAstro({
@@ -272,6 +284,7 @@ describe("autoParamAstro", () => {
     const dir = await mkdtemp(path.join(tmpdir(), "auto-param-empty-"));
     const integration = autoParamAstro({ params: { utm_source: "n" } });
 
-    await expect(buildDone(integration, dir)).resolves.toBeDefined();
+    const logger = await buildDone(integration, dir);
+    expect(logger.messages.map((entry) => entry.level)).toEqual(["debug"]);
   });
 });
