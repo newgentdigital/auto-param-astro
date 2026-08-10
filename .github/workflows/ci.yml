@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # Required for the DeepSource CLI to authenticate over OIDC.
+      id-token: write
 
     steps:
       - name: Checkout repository
@@ -40,7 +42,20 @@ jobs:
         run: bun run typecheck
 
       - name: Test
-        run: bun test
+        run: bun run test:coverage
 
       - name: Build
         run: bun run build
+
+      # Fork pull requests cannot mint an OIDC token, so skip rather than fail.
+      - name: Report coverage to DeepSource
+        if: >-
+          github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          curl -fsSL https://cli.deepsource.com/install | BINDIR=./bin sh
+          ./bin/deepsource report \
+            --analyzer test-coverage \
+            --key javascript \
+            --value-file ./coverage/lcov.info \
+            --use-oidc
