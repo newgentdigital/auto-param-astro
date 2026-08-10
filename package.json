@@ -1,28 +1,41 @@
 {
   "name": "@newgentdigital/auto-param-astro",
   "version": "1.3.0",
+  "private": false,
+  "description": "Automatically add your parameters to external links and URLs during build time with Astro.",
+  "keywords": [
+    "astro",
+    "astro-component",
+    "astro-integration",
+    "plugin",
+    "seo",
+    "tooling",
+    "utils",
+    "withastro"
+  ],
+  "homepage": "https://github.com/newgentdigital/auto-param-astro",
+  "bugs": {
+    "url": "https://github.com/newgentdigital/auto-param-astro",
+    "email": "engineering@newgent.digital"
+  },
+  "license": "AGPL-3.0-or-later",
   "author": {
     "name": "Newgent",
-    "url": "https://newgent.digital/",
-    "email": "engineering@newgent.digital"
+    "email": "engineering@newgent.digital",
+    "url": "https://newgent.digital/"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/newgentdigital/auto-param-astro.git"
   },
-  "devDependencies": {
-    "@eslint/js": "^9.39.2",
-    "@ianvs/prettier-plugin-sort-imports": "^4.7.0",
-    "@typescript-eslint/parser": "^8.53.1",
-    "eslint": "^9.39.2",
-    "prettier": "^3.8.1",
-    "prettier-plugin-jsdoc": "^1.8.0",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.53.1"
-  },
-  "peerDependencies": {
-    "astro": "^5.16.5"
-  },
+  "funding": "https://github.com/sponsors/newgentdigital",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -33,40 +46,26 @@
       "import": "./dist/middleware.js"
     }
   },
-  "bugs": {
-    "url": "https://github.com/newgentdigital/auto-param-astro",
-    "email": "engineering@newgent.digital"
-  },
-  "description": "Automatically add your parameters to external links and URLs during build time with Astro.",
-  "engines": {
-    "node": ">=20"
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "funding": "https://github.com/sponsors/newgentdigital",
-  "homepage": "https://github.com/newgentdigital/auto-param-astro",
-  "keywords": [
-    "plugin",
-    "tooling",
-    "utils",
-    "seo",
-    "astro",
-    "astro-component",
-    "astro-integration",
-    "withastro"
-  ],
-  "license": "AGPL-3.0-or-later",
-  "private": false,
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "lint": "eslint --ext .js,.ts,.astro .",
-    "lint:fix": "eslint --fix --ext .js,.ts,.astro ."
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "lint": "oxlint --type-aware --tsconfig tsconfig.test.json",
+    "lint:fix": "oxlint --type-aware --tsconfig tsconfig.test.json --fix",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.test.json"
   },
-  "sideEffects": false,
-  "type": "module",
-  "types": "./dist/index.d.ts"
+  "devDependencies": {
+    "@types/bun": "^1.3.14",
+    "oxfmt": "^0.63.0",
+    "oxlint": "^1.78.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "typescript": "^7.0.2"
+  },
+  "peerDependencies": {
+    "astro": "^5.16.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
 }
