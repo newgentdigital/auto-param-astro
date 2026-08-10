@@ -23,18 +23,18 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2.1.2
+        uses: oven-sh/setup-bun@v2.2.0
         with:
           bun-version: latest
 
       - name: Setup Node
-        uses: actions/setup-node@v6.2.0
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: 24
 
@@ -48,7 +48,7 @@ jobs:
         run: bun run build
 
       - name: Setup Node with npm registry
-        uses: actions/setup-node@v6.2.0
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
@@ -57,7 +57,7 @@ jobs:
         run: npm publish --provenance --access public
 
       - name: Setup Node with GitHub Packages registry
-        uses: actions/setup-node@v6.2.0
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: 24
           registry-url: https://npm.pkg.github.com
