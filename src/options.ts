@@ -19,6 +19,16 @@ function normalizeHost(hostname: string): string {
   return host.slice(0, end);
 }
 
+/** Normalizes a configured host pattern; `*.example.com` and `example.com` are equivalent. */
+function normalizeHostPattern(pattern: string): string {
+  const host = normalizeHost(pattern);
+  return host.startsWith("*.") ? host.slice(2) : host;
+}
+
+function normalizeHostPatterns(patterns: readonly string[]): string[] {
+  return patterns.map(normalizeHostPattern).filter(Boolean);
+}
+
 function assertStringArray(value: unknown, optionName: string): asserts value is string[] {
   if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string"))
     throw new Error(`[auto-param-astro] options.${optionName} must be an array of strings.`);
@@ -66,6 +76,9 @@ export function assertValidOptions(
   if (options.exemptDataAttributes !== undefined)
     assertStringArray(options.exemptDataAttributes, "exemptDataAttributes");
 
+  if (options.includeDomains !== undefined)
+    assertStringArray(options.includeDomains, "includeDomains");
+
   if (options.exemptDomains !== undefined)
     assertStringArray(options.exemptDomains, "exemptDomains");
 }
@@ -86,12 +99,8 @@ export function resolveOptions(options: AutoParamAstroOptions): ResolvedAutoPara
     exemptAttributeNames: exemptAttributeNames
       .map((name) => name.trim().toLowerCase())
       .filter(Boolean),
-    // `*.example.com` and `example.com` are equivalent: both match the apex
-    // domain and any subdomain of it.
-    exemptDomains: (options.exemptDomains ?? [])
-      .map((entry) => normalizeHost(entry))
-      .map((entry) => (entry.startsWith("*.") ? entry.slice(2) : entry))
-      .filter(Boolean),
+    includeDomains: normalizeHostPatterns(options.includeDomains ?? []),
+    exemptDomains: normalizeHostPatterns(options.exemptDomains ?? []),
   };
 }
 

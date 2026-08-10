@@ -244,6 +244,25 @@ describe("exemptions", () => {
   });
 });
 
+describe("includeDomains", () => {
+  const options: AutoParamAstroOptions = { ...basic, includeDomains: ["partner.com"] };
+
+  test("rewrites only listed hosts and their subdomains", () => {
+    expect(rewrite('<a href="https://partner.com/p">x</a>', options)).toContain("utm_source");
+    expect(rewrite('<a href="https://shop.partner.com/p">x</a>', options)).toContain("utm_source");
+  });
+
+  test("leaves every other host alone", () => {
+    const html = '<a href="https://other.com/p">x</a>';
+    expect(rewrite(html, options)).toBe(html);
+  });
+
+  test("exemptDomains wins over includeDomains", () => {
+    const html = '<a href="https://shop.partner.com/p">x</a>';
+    expect(rewrite(html, { ...options, exemptDomains: ["shop.partner.com"] })).toBe(html);
+  });
+});
+
 describe("statistics", () => {
   test("counts scanned and changed links", () => {
     const result = rewriteHtmlExternalLinks(

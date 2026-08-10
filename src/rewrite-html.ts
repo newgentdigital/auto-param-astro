@@ -45,16 +45,14 @@ function shouldEncodeAmpersands(rawOriginal: string): boolean {
   return AMPERSAND_ENTITY.test(rawOriginal);
 }
 
-function isDomainExempt(
-  hostname: string,
-  exemptDomains: ResolvedAutoParamAstroOptions["exemptDomains"],
-): boolean {
-  if (exemptDomains.length === 0) return false;
+/** Whether `hostname` equals, or is a subdomain of, any entry in `patterns`. */
+function matchesHostList(hostname: string, patterns: readonly string[]): boolean {
+  if (patterns.length === 0) return false;
 
   const host = normalizeHost(hostname);
   if (!host) return false;
 
-  return exemptDomains.some((base) => host === base || host.endsWith(`.${base}`));
+  return patterns.some((base) => host === base || host.endsWith(`.${base}`));
 }
 
 /**
@@ -171,7 +169,7 @@ function parseTagAttributes(tag: string, startOffset: number): TagAttributes {
 
 /**
  * Returns the rewritten href, or `null` when the link should be left alone
- * (relative URL, non-HTTP scheme, exempt domain, or unparseable).
+ * (relative URL, non-HTTP scheme, exempt or non-included domain, unparseable).
  */
 function rewriteHref(rawHref: string, options: ResolvedAutoParamAstroOptions): string | null {
   const decoded = decodeHrefAttributeValue(rawHref.trim());
@@ -193,7 +191,11 @@ function rewriteHref(rawHref: string, options: ResolvedAutoParamAstroOptions): s
     return null;
   }
 
-  if (isDomainExempt(url.hostname, options.exemptDomains)) return null;
+  if (matchesHostList(url.hostname, options.exemptDomains)) return null;
+
+  // An empty allowlist means "every host is eligible".
+  if (options.includeDomains.length > 0 && !matchesHostList(url.hostname, options.includeDomains))
+    return null;
 
   if (options.paramMode === "replace") url.search = "";
 

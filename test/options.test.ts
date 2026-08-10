@@ -14,6 +14,7 @@ const invalid: [name: string, options: unknown][] = [
   ["NaN param value", { params: { a: Number.NaN } }],
   ["unknown paramMode", { params: { a: "1" }, paramMode: "nope" }],
   ["non-array exemptDomains", { params: { a: "1" }, exemptDomains: "x" }],
+  ["non-array includeDomains", { params: { a: "1" }, exemptDomains: [], includeDomains: "x" }],
   ["non-string exemptDataAttributes entry", { params: { a: "1" }, exemptDataAttributes: [1] }],
 ];
 
@@ -31,6 +32,7 @@ describe("assertValidOptions", () => {
         params: { a: "1", b: 2, c: false },
         paramMode: "replace",
         exemptDataAttributes: ["data-x"],
+        includeDomains: ["partner.com"],
         exemptDomains: ["example.com", "*.github.com"],
       }),
     ).not.toThrow();
@@ -42,6 +44,7 @@ describe("resolveOptions", () => {
     const resolved = resolveOptions({ params: { a: 1 } });
     expect(resolved.paramMode).toBe("preserve");
     expect(resolved.exemptDomains).toEqual([]);
+    expect(resolved.includeDomains).toEqual([]);
     expect(resolved.exemptAttributeNames).toEqual(["data-auto-param-exempt"]);
     expect(resolved.params).toEqual([["a", "1"]]);
   });

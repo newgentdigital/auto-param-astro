@@ -35,6 +35,22 @@ export interface AutoParamAstroOptions {
   exemptDataAttributes?: string[];
 
   /**
+   * Restricts rewriting to these hostnames. Every other link is left alone.
+   *
+   * Empty (the default) means every absolute `http(s)` link is eligible. Entries
+   * match the host and its subdomains, as in
+   * {@link AutoParamAstroOptions.domainParams | domainParams}. Use this for
+   * affiliate or partner tagging, where only a known set of destinations should
+   * carry parameters.
+   *
+   * {@link AutoParamAstroOptions.exemptDomains | exemptDomains} still wins, so a
+   * host in both lists is left alone.
+   *
+   * @defaultValue `[]`
+   */
+  includeDomains?: string[];
+
+  /**
    * Domains that are exempt globally.
    *
    * Matches exact domains and subdomains (e.g. 'example.com' matches
@@ -54,6 +70,8 @@ export interface ResolvedAutoParamAstroOptions {
   /** Configured parameters, pre-stringified. */
   params: readonly (readonly [key: string, value: string])[];
   paramMode: AutoParamParamMode;
+  /** Normalized allowlist. Empty means every host is eligible. */
+  includeDomains: readonly string[];
   /** Lowercased attribute names that exempt the tag they appear on. */
   exemptAttributeNames: readonly string[];
   /**
