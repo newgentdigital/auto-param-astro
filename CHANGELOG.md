@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.1.0](https://github.com/newgentdigital/auto-param-astro/compare/v2.0.0...v2.1.0) (2026-08-10)
+
+
+### Features
+
+* add domainParams for per-destination parameters ([4cdf23b](https://github.com/newgentdigital/auto-param-astro/commit/4cdf23b3c248c18acccb8da4c7c639a56527ceb2))
+* add includeDomains to restrict rewriting to an allowlist ([521b1b9](https://github.com/newgentdigital/auto-param-astro/commit/521b1b9a212b33fdc905c2ff1dec1d190aff2dca))
+* add skipInternalLinks to leave your own site untagged ([801b48c](https://github.com/newgentdigital/auto-param-astro/commit/801b48c8a3173245f22643e90f923065f368ff94))
+* export rewriteHtmlExternalLinks from the package entrypoint ([21d921a](https://github.com/newgentdigital/auto-param-astro/commit/21d921ad7e1ef38822066f02edebfb97a51e98c4))
+* rewrite area hrefs alongside anchor hrefs ([f43e80a](https://github.com/newgentdigital/auto-param-astro/commit/f43e80abc283780569f537ceefc4992dbfbc0b9b))
+
+
+### Bug Fixes
+
+* locate href and exempt attributes by scanning tag attributes ([b988da2](https://github.com/newgentdigital/auto-param-astro/commit/b988da26bd8f777f5355c378dda14eadb5a950db))
+* stop a commented-out raw-text tag from skipping the rest of a page ([5c03419](https://github.com/newgentdigital/auto-param-astro/commit/5c03419be66f2e6602f5fec018208b0e9a74721c))
+
 ## [2.0.0](https://github.com/newgentdigital/auto-param-astro/compare/v1.3.0...v2.0.0) (2026-08-10)
 
 
