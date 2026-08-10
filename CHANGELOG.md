@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.0.0](https://github.com/newgentdigital/auto-param-astro/compare/v1.3.0...v2.0.0) (2026-08-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* the astro peer dependency is now ^7.2.0 and Node >=22.12.0 is required. Astro 6 dropped Node 18 and 20, and Astro 7 moved to Vite 8 (Rolldown), which changes the Vite internals an integration plugin builds against. Projects on Astro 5 or 6 should stay on 1.x.
+
+### Features
+
+* require Astro 7 and Node 22.12 ([29cbecc](https://github.com/newgentdigital/auto-param-astro/commit/29cbeccac88a25e3050951f2f538dce08a23da7a))
+
+
+### Bug Fixes
+
+* decode HTML entities in one pass and bound hostname normalisation ([e7505e6](https://github.com/newgentdigital/auto-param-astro/commit/e7505e6b2bfe233baa2c8b340ba14fcb94f9605a))
+* **middleware:** keep rewritten responses valid ([eb6f060](https://github.com/newgentdigital/auto-param-astro/commit/eb6f060afc0fc69feb745a9f0d82632018ecd4a9))
+* stop rewriting markup that is not an external link ([2b75f10](https://github.com/newgentdigital/auto-param-astro/commit/2b75f1081449ea01a0cbda72b8302fe89b076fcc))
+
 ## [1.3.0](https://github.com/newgentdigital/auto-param-astro/compare/v1.2.0...v1.3.0) (2026-01-26)
 
 ### Features
