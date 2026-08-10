@@ -45,8 +45,8 @@ export interface AutoParamAstroOptions {
 }
 
 /**
- * Options after defaults have been applied and per-run work (regex compilation,
- * param stringification) has been hoisted out of the hot path.
+ * Options after defaults have been applied and per-run work (attribute-name
+ * lowercasing, param stringification) has been hoisted out of the hot path.
  *
  * @internal
  */
@@ -54,8 +54,8 @@ export interface ResolvedAutoParamAstroOptions {
   /** Configured parameters, pre-stringified. */
   params: readonly (readonly [key: string, value: string])[];
   paramMode: AutoParamParamMode;
-  /** One compiled matcher per configured exempt data-attribute. */
-  exemptAttributePatterns: readonly RegExp[];
+  /** Lowercased attribute names that exempt the tag they appear on. */
+  exemptAttributeNames: readonly string[];
   /**
    * Normalized exempt hostnames, with any leading `*.` stripped. Each entry
    * matches itself and any subdomain of itself.

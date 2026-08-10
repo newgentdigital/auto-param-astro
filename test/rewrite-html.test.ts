@@ -147,6 +147,24 @@ describe("attribute handling", () => {
     expect(out).toContain("#38;");
   });
 
+  test("ignores an href that only appears inside another attribute's value", () => {
+    const out = rewrite(`<a title="href='x'" href="https://example.com/">x</a>`, basic);
+    expect(out).toBe(`<a title="href='x'" href="https://example.com/?utm_source=newsletter">x</a>`);
+  });
+
+  test("rewrites the first href when a tag repeats the attribute", () => {
+    // Browsers keep the first of a duplicated attribute; so do we.
+    const out = rewrite('<a href="https://a.com/" href="https://b.com/">x</a>', basic);
+    expect(out).toBe('<a href="https://a.com/?utm_source=newsletter" href="https://b.com/">x</a>');
+  });
+
+  test("handles a self-closing tag and an empty href", () => {
+    expect(rewrite('<a href="https://example.com/"/>', basic)).toBe(
+      '<a href="https://example.com/?utm_source=newsletter"/>',
+    );
+    expect(rewrite("<a href>x</a>", basic)).toBe("<a href>x</a>");
+  });
+
   test("does not touch other tags or surrounding markup", () => {
     const out = rewrite('<p>before</p><a href="https://example.com/">x</a><p>after</p>', basic);
     expect(out.startsWith("<p>before</p>")).toBe(true);
@@ -171,6 +189,19 @@ describe("exemptions", () => {
       basic,
     );
     expect(out).toContain("utm_source=newsletter");
+  });
+
+  test("matches exempt attribute names case-insensitively", () => {
+    const html = '<a href="https://example.com/" DATA-AUTO-PARAM-EXEMPT>x</a>';
+    expect(rewrite(html, basic)).toBe(html);
+  });
+
+  test("ignores an exempt attribute name that only appears inside a value", () => {
+    const cases = [
+      '<a title="see data-auto-param-exempt" href="https://example.com/">x</a>',
+      '<a href="https://example.com/" title=" data-auto-param-exempt ">x</a>',
+    ];
+    for (const html of cases) expect(rewrite(html, basic)).toContain("utm_source=newsletter");
   });
 
   test("exempts a domain and its subdomains", () => {

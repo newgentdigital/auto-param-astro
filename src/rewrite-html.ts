@@ -19,9 +19,6 @@ const SKIPPED_REGIONS: readonly { start: RegExp; end: string }[] = [
   { start: /<textarea(?=[\s/>])/gi, end: "</textarea" },
 ];
 
-const QUOTED_HREF = /\bhref\s*=\s*(?<quote>["'])(?<value>[^"']*)\k<quote>/i;
-const UNQUOTED_HREF = /\bhref\s*=\s*(?<value>[^\s"'<>`]+)/i;
-
 const NON_HTTP_SCHEME = /^(?:[a-z][a-z0-9+.-]*:)/i;
 
 /**
@@ -87,8 +84,89 @@ function findTagEnd(html: string, startIndex: number): number {
   return -1;
 }
 
-function hasExemptAttribute(tag: string, patterns: readonly RegExp[]): boolean {
-  return patterns.some((pattern) => pattern.test(tag));
+/** The `href` attribute of a tag, located precisely enough to splice. */
+interface HrefAttribute {
+  /** Raw attribute value, entities and all. */
+  raw: string;
+  /** Offset of the value within the tag; inside the quotes when quoted. */
+  start: number;
+  /** Offset just past the value within the tag. */
+  end: number;
+  /** The quote character used, or `null` for an unquoted value. */
+  quote: '"' | "'" | null;
+}
+
+interface TagAttributes {
+  /** Lowercased attribute names, in source order. */
+  names: string[];
+  /** The first `href` attribute, or `null` when the tag has none. */
+  href: HrefAttribute | null;
+}
+
+const ATTRIBUTE_NAME_END = new Set<string | undefined>([
+  " ",
+  "\t",
+  "\n",
+  "\r",
+  "\f",
+  "/",
+  "=",
+  ">",
+]);
+
+function isWhitespace(char: string | undefined): boolean {
+  return char === " " || char === "\t" || char === "\n" || char === "\r" || char === "\f";
+}
+
+/**
+ * Walks the attributes of a single tag, from `startOffset` (just past the tag
+ * name) to the closing `>`.
+ *
+ * Scanning the tag rather than pattern-matching it is what keeps an `href=` or a
+ * `data-*` name that merely appears *inside* another attribute's value from
+ * being mistaken for a real attribute.
+ */
+function parseTagAttributes(tag: string, startOffset: number): TagAttributes {
+  const names: string[] = [];
+  let href: HrefAttribute | null = null;
+
+  // The final character is the closing `>`, which is never part of an attribute.
+  const limit = tag.length - 1;
+  let i = startOffset;
+
+  while (i < limit) {
+    if (isWhitespace(tag[i]) || tag[i] === "/") {
+      i++;
+      continue;
+    }
+
+    const nameStart = i;
+    while (i < limit && !ATTRIBUTE_NAME_END.has(tag[i])) i++;
+    const name = tag.slice(nameStart, i).toLowerCase();
+    if (name) names.push(name);
+
+    while (i < limit && isWhitespace(tag[i])) i++;
+    if (tag[i] !== "=") continue;
+
+    i++;
+    while (i < limit && isWhitespace(tag[i])) i++;
+
+    const quoteChar = tag[i];
+    const quote = quoteChar === '"' || quoteChar === "'" ? quoteChar : null;
+    if (quote) i++;
+
+    const valueStart = i;
+    if (quote) while (i < limit && tag[i] !== quote) i++;
+    else while (i < limit && !isWhitespace(tag[i])) i++;
+
+    if (name === "href" && !href)
+      href = { raw: tag.slice(valueStart, i), start: valueStart, end: i, quote };
+
+    // Step past the closing quote.
+    if (quote) i++;
+  }
+
+  return { names, href };
 }
 
 /**
@@ -216,30 +294,27 @@ export function rewriteHtml(
     const tag = html.slice(tagStart, tagEnd + 1);
     let rewrittenTag = tag;
 
-    if (!hasExemptAttribute(tag, options.exemptAttributePatterns)) {
-      // Prefer a quoted href; fall back to an unquoted attribute value.
-      const quotedMatch = QUOTED_HREF.exec(tag);
-      const unquotedMatch = quotedMatch ? null : UNQUOTED_HREF.exec(tag);
-      const rawHref = quotedMatch?.groups?.value ?? unquotedMatch?.groups?.value;
+    const { names, href } = parseTagAttributes(tag, match[0].length);
+    const isExempt = options.exemptAttributeNames.some((name) => names.includes(name));
 
-      if (rawHref) {
-        linksScanned++;
+    if (href?.raw && !isExempt) {
+      linksScanned++;
 
-        const rewrittenHref = rewriteHref(rawHref, options);
-        if (rewrittenHref !== null) {
-          const finalHref = shouldEncodeAmpersands(rawHref)
-            ? rewrittenHref.replaceAll("&", "&amp;")
-            : rewrittenHref;
+      const rewrittenHref = rewriteHref(href.raw, options);
+      if (rewrittenHref !== null) {
+        const finalHref = shouldEncodeAmpersands(href.raw)
+          ? rewrittenHref.replaceAll("&", "&amp;")
+          : rewrittenHref;
 
-          if (finalHref !== rawHref) {
-            linksChanged++;
+        if (finalHref !== href.raw) {
+          linksChanged++;
 
-            const quote = quotedMatch?.groups?.quote;
-            rewrittenTag = quotedMatch
-              ? tag.replace(QUOTED_HREF, () => `href=${quote}${finalHref}${quote}`)
-              : // Unquoted attributes are re-emitted quoted, for safety.
-                tag.replace(UNQUOTED_HREF, () => `href="${finalHref}"`);
-          }
+          // Unquoted attribute values are re-emitted quoted, for safety.
+          const quote = href.quote ?? '"';
+          rewrittenTag =
+            tag.slice(0, href.start) +
+            (href.quote ? finalHref : `${quote}${finalHref}${quote}`) +
+            tag.slice(href.end);
         }
       }
     }

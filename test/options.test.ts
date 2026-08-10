@@ -42,8 +42,13 @@ describe("resolveOptions", () => {
     const resolved = resolveOptions({ params: { a: 1 } });
     expect(resolved.paramMode).toBe("preserve");
     expect(resolved.exemptDomains).toEqual([]);
-    expect(resolved.exemptAttributePatterns).toHaveLength(1);
+    expect(resolved.exemptAttributeNames).toEqual(["data-auto-param-exempt"]);
     expect(resolved.params).toEqual([["a", "1"]]);
+  });
+
+  test("lowercases exempt attribute names", () => {
+    const resolved = resolveOptions({ params: { a: 1 }, exemptDataAttributes: [" DATA-Skip "] });
+    expect(resolved.exemptAttributeNames).toEqual(["data-skip"]);
   });
 
   test("normalizes exempt domains", () => {
@@ -59,6 +64,6 @@ describe("resolveOptions", () => {
       params: { a: 1 },
       exemptDataAttributes: [],
     });
-    expect(resolved.exemptAttributePatterns).toEqual([]);
+    expect(resolved.exemptAttributeNames).toEqual([]);
   });
 });

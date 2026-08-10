@@ -83,10 +83,9 @@ export function resolveOptions(options: AutoParamAstroOptions): ResolvedAutoPara
   return {
     params: Object.entries(options.params).map(([key, value]) => [key, String(value)] as const),
     paramMode: options.paramMode ?? "preserve",
-    exemptAttributePatterns: exemptAttributeNames
-      .filter(Boolean)
-      // Match attribute names, not arbitrary substrings.
-      .map((name) => new RegExp(`\\s${escapeRegExp(name)}(?=[\\s=>/]|$)`, "i")),
+    exemptAttributeNames: exemptAttributeNames
+      .map((name) => name.trim().toLowerCase())
+      .filter(Boolean),
     // `*.example.com` and `example.com` are equivalent: both match the apex
     // domain and any subdomain of it.
     exemptDomains: (options.exemptDomains ?? [])
