@@ -2,10 +2,11 @@ import { normalizeHost, resolveOptions } from "./options.js";
 import type { AutoParamAstroOptions, ResolvedAutoParamAstroOptions } from "./types.js";
 
 /**
- * Matches the start of an anchor tag only when followed by a tag terminator, so
- * custom elements such as `<a-scene>` or `<audio>` are not treated as links.
+ * Matches the start of a link tag (`<a>` or `<area>`) only when followed by a
+ * tag terminator, so custom elements such as `<a-scene>` or `<audio>` are not
+ * treated as links. `area` is listed first because the alternation is ordered.
  */
-const ANCHOR_START = /<a(?=[\s/>])/gi;
+const LINK_START = /<(?:area|a)(?=[\s/>])/gi;
 
 /**
  * Regions whose contents are raw text (or a comment) and therefore must never
@@ -164,7 +165,7 @@ export interface HtmlRewriteResult {
 }
 
 /**
- * Rewrites external `<a href>` targets in an HTML document, adding the
+ * Rewrites external `<a href>` and `<area href>` targets in an HTML document, adding the
  * configured query parameters according to `paramMode`.
  *
  * Callers that process many documents should resolve their options once with
@@ -191,13 +192,13 @@ export function rewriteHtml(
   const parts: string[] = [];
   let lastIndex = 0;
 
-  ANCHOR_START.lastIndex = 0;
+  LINK_START.lastIndex = 0;
 
   let match: RegExpExecArray | null;
-  while ((match = ANCHOR_START.exec(html)) !== null) {
+  while ((match = LINK_START.exec(html)) !== null) {
     const tagStart = match.index;
 
-    // Skip anchors that live inside a raw-text or comment region.
+    // Skip links that live inside a raw-text or comment region.
     let region = skipped[skippedIndex];
     while (region && region[1] <= tagStart) {
       skippedIndex++;
@@ -205,11 +206,11 @@ export function rewriteHtml(
     }
 
     if (region && region[0] <= tagStart) {
-      ANCHOR_START.lastIndex = region[1];
+      LINK_START.lastIndex = region[1];
       continue;
     }
 
-    const tagEnd = findTagEnd(html, ANCHOR_START.lastIndex);
+    const tagEnd = findTagEnd(html, LINK_START.lastIndex);
     if (tagEnd === -1) break;
 
     const tag = html.slice(tagStart, tagEnd + 1);
@@ -245,7 +246,7 @@ export function rewriteHtml(
 
     parts.push(html.slice(lastIndex, tagStart), rewrittenTag);
     lastIndex = tagEnd + 1;
-    ANCHOR_START.lastIndex = lastIndex;
+    LINK_START.lastIndex = lastIndex;
   }
 
   parts.push(html.slice(lastIndex));

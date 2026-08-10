@@ -91,6 +91,16 @@ describe("link selection", () => {
     expect(out).toContain("utm_source=newsletter");
   });
 
+  test("rewrites area links inside an image map", () => {
+    const out = rewrite('<area shape="rect" href="https://example.com/">', basic);
+    expect(out).toBe('<area shape="rect" href="https://example.com/?utm_source=newsletter">');
+  });
+
+  test("ignores custom elements whose name starts with 'area'", () => {
+    const html = '<area-map href="https://example.com/"></area-map>';
+    expect(rewrite(html, basic)).toBe(html);
+  });
+
   test("leaves unparseable URLs alone", () => {
     const html = '<a href="https://exa mple.com">x</a><a href="">e</a>';
     expect(rewrite(html, basic)).toBe(html);
