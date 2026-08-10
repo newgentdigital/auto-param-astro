@@ -33,7 +33,7 @@ jobs:
           stale-pr-message: |
             This pull request has been marked as stale because it has not had any activity for 30 days. The PR will be **closed in 7 days** if no further activity occurs.
 
-            **To keep this PR open**, simply add a comment, push new commits, or remove the `needs review` label. Add the `wip` label to prevent future stale marking..
+            **To keep this PR open**, simply add a comment, push new commits, or remove the `needs review` label. Add the `wip` label to prevent future stale marking.
 
             **Need to rebase or update?** Consider rebasing against the latest target branch to show continued development.
 
