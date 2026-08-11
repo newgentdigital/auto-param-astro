@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/newgentdigital/auto-param-astro/compare/v2.1.0...v2.1.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* publish sources so sourcemaps resolve ([#98](https://github.com/newgentdigital/auto-param-astro/issues/98)) ([f8e7b03](https://github.com/newgentdigital/auto-param-astro/commit/f8e7b031d423c212dc26ca55b184d7066a8d5f93))
+
 ## [2.1.0](https://github.com/newgentdigital/auto-param-astro/compare/v2.0.0...v2.1.0) (2026-08-10)
 
 
