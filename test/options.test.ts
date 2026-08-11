@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { assertValidOptions, resolveOptions } from "../src/options.js";
 import type { AutoParamAstroOptions } from "../src/types.js";
 

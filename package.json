@@ -50,8 +50,8 @@
     "build": "tsc -p tsconfig.json",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "lint": "oxlint --type-aware --tsconfig tsconfig.test.json",
-    "lint:fix": "oxlint --type-aware --tsconfig tsconfig.test.json --fix",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
     "test": "bun test",
     "test:coverage": "bun test --coverage --coverage-reporter=text --coverage-reporter=lcov",
     "typecheck": "tsc -p tsconfig.test.json"

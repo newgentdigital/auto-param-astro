@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { createMiddleware } from "../src/middleware.js";
 
 const onRequest = createMiddleware({ params: { utm_source: "newsletter" } });

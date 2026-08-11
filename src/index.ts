@@ -2,7 +2,9 @@ import { readFile, writeFile } from "node:fs/promises";
 import { availableParallelism } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
 import type { AstroIntegration } from "astro";
+
 import { assertValidOptions, escapeRegExp, resolveOptions } from "./options.js";
 import { rewriteHtml } from "./rewrite-html.js";
 import type { AutoParamAstroOptions, RewriteStats } from "./types.js";

@@ -1,4 +1,4 @@
-name: Delete old Action runs
+name: Delete old workflow runs
 
 on:
   schedule:
@@ -7,13 +7,14 @@ on:
 
 jobs:
   delete-runs:
+    name: Delete runs older than 7 days
     runs-on: ubuntu-latest
     permissions:
       actions: write
       contents: read
 
     steps:
-      - name: Delete old Action runs
+      - name: Run delete-workflow-runs
         uses: Mattraks/delete-workflow-runs@v2.1.0
         with:
           token: ${{ github.token }}

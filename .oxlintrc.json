@@ -1,10 +1,14 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "unicorn", "oxc", "import", "promise"],
+  "plugins": ["typescript", "unicorn", "oxc", "import", "promise", "node"],
   "categories": {
     "correctness": "error",
     "suspicious": "error",
     "perf": "error"
+  },
+  "options": {
+    "typeAware": true,
+    "reportUnusedDisableDirectives": "deny"
   },
   "rules": {
     "typescript/consistent-type-imports": "error",

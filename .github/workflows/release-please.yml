@@ -1,4 +1,4 @@
-name: Prepare release with release-please
+name: Release
 
 on:
   push:
@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   release-please:
-    name: Create or update release
+    name: Prepare release
     runs-on: ubuntu-latest
     permissions:
       contents: write

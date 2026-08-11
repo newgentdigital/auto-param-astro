@@ -1,4 +1,4 @@
-name: Close stale issues and PRs
+name: Manage stale issues and PRs
 
 on:
   schedule:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   stale:
-    name: Mark and close stale issues and PRs
+    name: Mark, then close after 7 more days
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -15,7 +15,7 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Handle stale issues and PRs
+      - name: Run actions/stale
         uses: actions/stale@v11.0.0
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}

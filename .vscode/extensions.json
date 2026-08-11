@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "oxc.oxc-vscode",
+    "TypeScriptTeam.native-preview",
+    "github.vscode-github-actions"
+  ]
+}

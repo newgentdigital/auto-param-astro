@@ -1,4 +1,5 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": ["dist/", "node_modules/", "bun.lock", "CHANGELOG.md"]
+  "sortImports": true,
+  "ignorePatterns": ["bun.lock", "CHANGELOG.md"]
 }

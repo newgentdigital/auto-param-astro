@@ -1,4 +1,5 @@
 import type { MiddlewareHandler } from "astro";
+
 import { resolveOptions } from "./options.js";
 import { rewriteHtml } from "./rewrite-html.js";
 import type { AutoParamAstroOptions } from "./types.js";

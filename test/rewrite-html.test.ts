@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { resolveOptions } from "../src/options.js";
 import { rewriteHtml, rewriteHtmlExternalLinks } from "../src/rewrite-html.js";
 import type { AutoParamAstroOptions } from "../src/types.js";

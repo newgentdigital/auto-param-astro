@@ -1,9 +1,11 @@
+import { describe, expect, test } from "bun:test";
 import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { describe, expect, test } from "bun:test";
+
 import type { AstroIntegration } from "astro";
+
 import autoParamAstro from "../src/index.js";
 import { findHtmlFiles } from "../src/walk.js";
 
